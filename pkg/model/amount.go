@@ -3,7 +3,7 @@ package model
 import (
 	"fmt"
 
-	"github.com/cockroachdb/apd/v3"
+	"github.com/JohnCGriffin/overflow"
 )
 
 type InvalidNumberError struct {
@@ -23,17 +23,26 @@ func (e InvalidCurrencyCodeError) Error() string {
 }
 
 type Amount struct {
-	Number       apd.Decimal
+	// This is incomplete. To get the "real" number, you have to shift right by the number of digits of the currency.
+	Number       int64
 	CurrencyCode CurrencyCode
 }
 
 func NewAmountFromInt64(n int64, currencyCode CurrencyCode) (Amount, error) {
-	d, ok := GetDigits(currencyCode)
+	_, ok := GetDigits(currencyCode)
 	if !ok {
 		return Amount{}, InvalidCurrencyCodeError{currencyCode}
 	}
-	number := apd.Decimal{}
-	number.SetFinite(n, -int32(d))
+	return Amount{n, currencyCode}, nil
+}
 
-	return Amount{number, currencyCode}, nil
+func (a Amount) Add(b Amount) (Amount, bool) {
+	if a.CurrencyCode != b.CurrencyCode {
+		return Amount{}, false
+	}
+	sum, ok := overflow.Add64(a.Number, b.Number)
+	if !ok {
+		return Amount{}, false
+	}
+	return Amount{Number: sum, CurrencyCode: a.CurrencyCode}, ok
 }
