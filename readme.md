@@ -31,6 +31,7 @@ Hint: you should use the Temporalite version to make it easy https://github.com/
 You need:
 
 * Go version 1.24.1 or compatible.
+* [Temporal CLI](https://docs.temporal.io/cli).
 
 ## Run unit tests
 
@@ -42,4 +43,18 @@ Or:
 
 ```sh
 docker run --rm -it -v $(pwd):/app -w /app golang:1.24.1 go test ./... -v
+```
+
+## Run integration tests
+
+Launch a billing worker:
+
+```sh
+go run main/billing_worker.go --task-queue
+```
+
+In another terminal, launch Temporal CLI:
+
+```sh
+temporal server start-dev --namespace billing --db-filename temporal.db
 ```
