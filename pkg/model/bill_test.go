@@ -9,7 +9,7 @@ import (
 func TestAddLineItemOnEmpty(t *testing.T) {
 	// Arrange
 	billId := BillId{CustomerId: "alice", Id: "6c5bb10f-6fd2-49be-a75a-806ad1c4cfcf"}
-	billInfo := BillInfo{Id: billId, CurrencyCode: "USD"}
+	billInfo := BillInfo{Id: billId, CurrencyCode: "USD", Status: Open}
 	bill := NewBillWithCapacity(billInfo, []BillLineItem{}, 1)
 	one, e := NewAmountFromInt64(100, "USD")
 	assert.NoError(t, e)
@@ -32,7 +32,7 @@ func TestAddLineItemOnNonEmpty(t *testing.T) {
 	billId := BillId{CustomerId: "bob", Id: "91c05476-2ae1-4fcf-a25c-f1851847aafe"}
 	matchboxId1 := BillLineItemId{BillId: billId, Id: "eef5a9e9-0d64-440f-87b3-3e7c02910d1f"}
 	matchboxItem1 := BillLineItem{Id: matchboxId1, Description: "Matchbox", Amount: one}
-	billInfo := BillInfo{Id: billId, CurrencyCode: "USD"}
+	billInfo := BillInfo{Id: billId, CurrencyCode: "USD", Status: Open}
 	bill := NewBillWithCapacity(billInfo, []BillLineItem{matchboxItem1}, 3)
 	two, e := NewAmountFromInt64(200, "USD")
 	assert.NoError(t, e)
@@ -56,7 +56,7 @@ func TestAddLineItemWithDifferentCurrencyCode(t *testing.T) {
 	billId := BillId{CustomerId: "carol", Id: "fc03932f-2b53-4d07-ad55-24fc7d85e277"}
 	matchboxId1 := BillLineItemId{BillId: billId, Id: "e29ed54f-5827-4286-bcf7-777f346e1039"}
 	matchboxItem1 := BillLineItem{Id: matchboxId1, Description: "Matchbox", Amount: one}
-	billInfo := BillInfo{Id: billId, CurrencyCode: "USD"}
+	billInfo := BillInfo{Id: billId, CurrencyCode: "USD", Status: Open}
 	bill := NewBillWithCapacity(billInfo, []BillLineItem{matchboxItem1}, 3)
 	two, e := NewAmountFromInt64(200, "GEL")
 	assert.NoError(t, e)

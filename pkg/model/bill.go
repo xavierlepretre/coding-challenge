@@ -5,9 +5,17 @@ type BillId struct {
 	Id         string
 }
 
+type BillStatus uint8
+
+const (
+	Open BillStatus = iota
+	Closed
+)
+
 type BillInfo struct {
 	Id           BillId
 	CurrencyCode CurrencyCode
+	Status       BillStatus
 }
 
 func (b *BillInfo) CheckLineItemCompatible(lineItem BillLineItem) error {

@@ -166,5 +166,8 @@ func BillingWorkflow(ctx workflow.Context, billInfo model.BillInfo, duration tim
 	selector.Select(ctx) // Wait until either the timer expires or the close signal is received
 
 	_, e = state.closeBillSyncActivity(ctx)
+	if e == nil {
+		state.BillInfo.Status = model.Closed
+	}
 	return state.Clone(), e
 }

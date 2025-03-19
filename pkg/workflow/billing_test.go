@@ -37,6 +37,7 @@ func (s *BillingWorkflowUnitTestSuite) defaultBillAndItems() (billInfo model.Bil
 	billInfo = model.BillInfo{
 		Id:           model.BillId{CustomerId: "alice", Id: "ca06186a-1f96-4398-9244-fbddf4ef2642"},
 		CurrencyCode: "USD",
+		Status:       model.Open,
 	}
 	amount1, err := model.NewAmountFromInt64(100, "USD")
 	s.NoError(err)
@@ -97,6 +98,7 @@ func (s *BillingWorkflowUnitTestSuite) Test_Workflow_CloseAtMaturity_WithoutItem
 	s.NoError(s.env.GetWorkflowError())
 	var result workflow.BillingState
 	s.env.GetWorkflowResult(&result)
+	billInfo.Status = model.Closed
 	s.Equal(workflow.BillingState{
 		BillInfo:          billInfo,
 		BillLineItemCount: 0,
@@ -127,6 +129,7 @@ func (s *BillingWorkflowUnitTestSuite) Test_Workflow_CloseEarly_WithoutItems() {
 	s.NoError(s.env.GetWorkflowError())
 	var result workflow.BillingState
 	s.env.GetWorkflowResult(&result)
+	billInfo.Status = model.Closed
 	s.Equal(workflow.BillingState{
 		BillInfo:          billInfo,
 		BillLineItemCount: 0,
@@ -174,6 +177,7 @@ func (s *BillingWorkflowUnitTestSuite) Test_Workflow_CloseEarly_WithFailedItem()
 	s.Equal(uint64(0), receivedState.BillLineItemCount)
 	var result workflow.BillingState
 	s.env.GetWorkflowResult(&result)
+	billInfo.Status = model.Closed
 	s.Equal(workflow.BillingState{
 		BillInfo:          billInfo,
 		BillLineItemCount: 0,
@@ -229,6 +233,7 @@ func (s *BillingWorkflowUnitTestSuite) Test_Workflow_CloseEarly_With1Item() {
 	s.Equal(uint64(1), receivedState.BillLineItemCount)
 	var result workflow.BillingState
 	s.env.GetWorkflowResult(&result)
+	billInfo.Status = model.Closed
 	s.Equal(workflow.BillingState{
 		BillInfo:          billInfo,
 		BillLineItemCount: 1,
@@ -276,6 +281,7 @@ func (s *BillingWorkflowUnitTestSuite) Test_Workflow_CloseAtMaturity_With2ItemsT
 	s.Equal(uint64(2), receivedState.BillLineItemCount)
 	var result workflow.BillingState
 	s.env.GetWorkflowResult(&result)
+	billInfo.Status = model.Closed
 	s.Equal(workflow.BillingState{
 		BillInfo:          billInfo,
 		BillLineItemCount: 2,
@@ -349,6 +355,7 @@ func (s *BillingWorkflowUnitTestSuite) Test_Workflow_CloseAtMaturity_With2ItemsS
 	s.Equal(uint64(2), receivedState.BillLineItemCount)
 	var result workflow.BillingState
 	s.env.GetWorkflowResult(&result)
+	billInfo.Status = model.Closed
 	s.Equal(workflow.BillingState{
 		BillInfo:          billInfo,
 		BillLineItemCount: 2,
@@ -418,6 +425,7 @@ func (s *BillingWorkflowUnitTestSuite) Test_Workflow_AddSameUpdateId_OnlyFirstRe
 	s.Equal(uint64(1), receivedState.BillLineItemCount)
 	var result workflow.BillingState
 	s.env.GetWorkflowResult(&result)
+	billInfo.Status = model.Closed
 	s.Equal(workflow.BillingState{
 		BillInfo:          billInfo,
 		BillLineItemCount: 1,
@@ -479,6 +487,7 @@ func (s *BillingWorkflowUnitTestSuite) Test_Workflow_AddSameItemId_OnlyFirstReco
 	s.Equal(uint64(1), receivedState.BillLineItemCount)
 	var result workflow.BillingState
 	s.env.GetWorkflowResult(&result)
+	billInfo.Status = model.Closed
 	s.Equal(workflow.BillingState{
 		BillInfo:          billInfo,
 		BillLineItemCount: 1,
@@ -560,6 +569,7 @@ func (s *BillingWorkflowUnitTestSuite) Test_Workflow_CloseAtMaturity_With2Items_
 	s.Equal(uint64(2), receivedState.BillLineItemCount)
 	var result workflow.BillingState
 	s.env.GetWorkflowResult(&result)
+	billInfo.Status = model.Closed
 	s.Equal(workflow.BillingState{
 		BillInfo:          billInfo,
 		BillLineItemCount: 2,
@@ -615,6 +625,7 @@ func (s *BillingWorkflowUnitTestSuite) Test_Workflow_CannotAddItemAfterClose() {
 	s.Equal(uint64(1), receivedState.BillLineItemCount)
 	var result workflow.BillingState
 	s.env.GetWorkflowResult(&result)
+	billInfo.Status = model.Closed
 	s.Equal(workflow.BillingState{
 		BillInfo:          billInfo,
 		BillLineItemCount: 1,
