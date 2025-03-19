@@ -58,13 +58,13 @@ func (s *BillingWorkflowUnitTestSuite) defaultBillAndItems() (billInfo model.Bil
 func (s *BillingWorkflowUnitTestSuite) Test_Workflow_Fails_NegativeDuration() {
 	// Arrange
 	billInfo, _, _ := s.defaultBillAndItems()
-	s.env.OnActivity(activity.CreateBillIfNotExistActivity, mock.AnythingOfType("BillInfo")).Return(nil).Never()
+	s.env.OnActivity(activity.CreateBillIfNotExistActivity, mock.AnythingOfType("BillInfo")).Return(uint64(1), nil).Never()
 	s.env.OnActivity(
 		activity.AddBillLineItemIfNotExistActivity,
 		mock.AnythingOfType("BillInfo"),
 		mock.AnythingOfType("BillLineItem"),
-	).Return(nil).Never()
-	s.env.OnActivity(activity.CloseBillActivity, mock.AnythingOfType("BillInfo")).Return(nil).Never()
+	).Return(uint64(1), nil).Never()
+	s.env.OnActivity(activity.CloseBillActivity, mock.AnythingOfType("BillInfo")).Return(uint64(1), nil).Never()
 
 	// Act
 	s.env.ExecuteWorkflow(workflow.BillingWorkflow, billInfo, time.Hour*-1)
@@ -81,13 +81,13 @@ func (s *BillingWorkflowUnitTestSuite) Test_Workflow_Fails_NegativeDuration() {
 func (s *BillingWorkflowUnitTestSuite) Test_Workflow_CloseAtMaturity_WithoutItems() {
 	// Arrange
 	billInfo, _, _ := s.defaultBillAndItems()
-	s.env.OnActivity(activity.CreateBillIfNotExistActivity, mock.AnythingOfType("BillInfo")).Return(nil)
+	s.env.OnActivity(activity.CreateBillIfNotExistActivity, mock.AnythingOfType("BillInfo")).Return(uint64(1), nil)
 	s.env.OnActivity(
 		activity.AddBillLineItemIfNotExistActivity,
 		mock.AnythingOfType("BillInfo"),
 		mock.AnythingOfType("BillLineItem"),
-	).Return(nil).Never()
-	s.env.OnActivity(activity.CloseBillActivity, mock.AnythingOfType("BillInfo")).Return(nil)
+	).Return(uint64(1), nil).Never()
+	s.env.OnActivity(activity.CloseBillActivity, mock.AnythingOfType("BillInfo")).Return(uint64(1), nil)
 
 	// Act
 	s.env.ExecuteWorkflow(workflow.BillingWorkflow, billInfo, time.Hour*24*30)
@@ -107,13 +107,13 @@ func (s *BillingWorkflowUnitTestSuite) Test_Workflow_CloseAtMaturity_WithoutItem
 func (s *BillingWorkflowUnitTestSuite) Test_Workflow_CloseEarly_WithoutItems() {
 	// Arrange
 	billInfo, _, _ := s.defaultBillAndItems()
-	s.env.OnActivity(activity.CreateBillIfNotExistActivity, mock.AnythingOfType("BillInfo")).Return(nil)
+	s.env.OnActivity(activity.CreateBillIfNotExistActivity, mock.AnythingOfType("BillInfo")).Return(uint64(1), nil)
 	s.env.OnActivity(
 		activity.AddBillLineItemIfNotExistActivity,
 		mock.AnythingOfType("BillInfo"),
 		mock.AnythingOfType("BillLineItem"),
-	).Return(nil).Never()
-	s.env.OnActivity(activity.CloseBillActivity, mock.AnythingOfType("BillInfo")).Return(nil)
+	).Return(uint64(1), nil).Never()
+	s.env.OnActivity(activity.CloseBillActivity, mock.AnythingOfType("BillInfo")).Return(uint64(1), nil)
 	s.env.RegisterDelayedCallback(func() {
 		message := "Close bill"
 		s.env.SignalWorkflow(workflow.CloseBillEarlySignal, &message)
@@ -137,13 +137,13 @@ func (s *BillingWorkflowUnitTestSuite) Test_Workflow_CloseEarly_WithoutItems() {
 func (s *BillingWorkflowUnitTestSuite) Test_Workflow_CloseEarly_WithFailedItem() {
 	// Arrange
 	billInfo, lineItem, _ := s.defaultBillAndItems()
-	s.env.OnActivity(activity.CreateBillIfNotExistActivity, mock.AnythingOfType("BillInfo")).Return(nil)
+	s.env.OnActivity(activity.CreateBillIfNotExistActivity, mock.AnythingOfType("BillInfo")).Return(uint64(1), nil)
 	s.env.OnActivity(
 		activity.AddBillLineItemIfNotExistActivity,
 		mock.AnythingOfType("BillInfo"),
 		mock.AnythingOfType("BillLineItem"),
-	).Return(errors.New("Fake error")).Times(10) // 10 attempts seem to be made by default
-	s.env.OnActivity(activity.CloseBillActivity, mock.AnythingOfType("BillInfo")).Return(nil)
+	).Return(uint64(0), errors.New("Fake error")).Times(10) // 10 attempts seem to be made by default
+	s.env.OnActivity(activity.CloseBillActivity, mock.AnythingOfType("BillInfo")).Return(uint64(1), nil)
 	s.env.RegisterDelayedCallback(func() {
 		s.env.UpdateWorkflow(
 			workflow.AddBillLineItemUpdate,
@@ -184,13 +184,13 @@ func (s *BillingWorkflowUnitTestSuite) Test_Workflow_CloseEarly_WithFailedItem()
 func (s *BillingWorkflowUnitTestSuite) Test_Workflow_CloseEarly_With1Item() {
 	// Arrange
 	billInfo, lineItem, _ := s.defaultBillAndItems()
-	s.env.OnActivity(activity.CreateBillIfNotExistActivity, mock.AnythingOfType("BillInfo")).Return(nil)
+	s.env.OnActivity(activity.CreateBillIfNotExistActivity, mock.AnythingOfType("BillInfo")).Return(uint64(1), nil)
 	s.env.OnActivity(
 		activity.AddBillLineItemIfNotExistActivity,
 		mock.AnythingOfType("BillInfo"),
 		mock.AnythingOfType("BillLineItem"),
-	).Return(nil)
-	s.env.OnActivity(activity.CloseBillActivity, mock.AnythingOfType("BillInfo")).Return(nil)
+	).Return(uint64(1), nil)
+	s.env.OnActivity(activity.CloseBillActivity, mock.AnythingOfType("BillInfo")).Return(uint64(1), nil)
 	s.env.RegisterDelayedCallback(func() {
 		s.env.UpdateWorkflow(
 			workflow.AddBillLineItemUpdate,
@@ -239,13 +239,13 @@ func (s *BillingWorkflowUnitTestSuite) Test_Workflow_CloseEarly_With1Item() {
 func (s *BillingWorkflowUnitTestSuite) Test_Workflow_CloseAtMaturity_With2ItemsTogether() {
 	// Arrange
 	billInfo, lineItem1, lineItem2 := s.defaultBillAndItems()
-	s.env.OnActivity(activity.CreateBillIfNotExistActivity, mock.AnythingOfType("BillInfo")).Return(nil)
+	s.env.OnActivity(activity.CreateBillIfNotExistActivity, mock.AnythingOfType("BillInfo")).Return(uint64(1), nil)
 	s.env.OnActivity(
 		activity.AddBillLineItemIfNotExistActivity,
 		mock.AnythingOfType("BillInfo"),
 		mock.AnythingOfType("BillLineItem"),
-	).Return(nil).Twice()
-	s.env.OnActivity(activity.CloseBillActivity, mock.AnythingOfType("BillInfo")).Return(nil)
+	).Return(uint64(1), nil).Twice()
+	s.env.OnActivity(activity.CloseBillActivity, mock.AnythingOfType("BillInfo")).Return(uint64(1), nil)
 	s.env.RegisterDelayedCallback(func() {
 		nextCount := 1
 		updateCallback := testsuite.TestUpdateCallback{
@@ -286,13 +286,13 @@ func (s *BillingWorkflowUnitTestSuite) Test_Workflow_CloseAtMaturity_With2ItemsT
 func (s *BillingWorkflowUnitTestSuite) Test_Workflow_CloseAtMaturity_With2ItemsSpaced() {
 	// Arrange
 	billInfo, lineItem1, lineItem2 := s.defaultBillAndItems()
-	s.env.OnActivity(activity.CreateBillIfNotExistActivity, mock.AnythingOfType("BillInfo")).Return(nil)
+	s.env.OnActivity(activity.CreateBillIfNotExistActivity, mock.AnythingOfType("BillInfo")).Return(uint64(1), nil)
 	s.env.OnActivity(
 		activity.AddBillLineItemIfNotExistActivity,
 		mock.AnythingOfType("BillInfo"),
 		mock.AnythingOfType("BillLineItem"),
-	).Return(nil).Twice()
-	s.env.OnActivity(activity.CloseBillActivity, mock.AnythingOfType("BillInfo")).Return(nil)
+	).Return(uint64(1), nil).Twice()
+	s.env.OnActivity(activity.CloseBillActivity, mock.AnythingOfType("BillInfo")).Return(uint64(1), nil)
 	s.env.RegisterDelayedCallback(func() {
 		s.env.UpdateWorkflow(
 			workflow.AddBillLineItemUpdate,
@@ -360,17 +360,17 @@ func (s *BillingWorkflowUnitTestSuite) Test_Workflow_CloseAtMaturity_With2ItemsS
 func (s *BillingWorkflowUnitTestSuite) Test_Workflow_AddSameUpdateId_OnlyFirstRecorded() {
 	// Arrange
 	billInfo, lineItem1, lineItem2 := s.defaultBillAndItems()
-	s.env.OnActivity(activity.CreateBillIfNotExistActivity, mock.AnythingOfType("BillInfo")).Return(nil)
+	s.env.OnActivity(activity.CreateBillIfNotExistActivity, mock.AnythingOfType("BillInfo")).Return(uint64(1), nil)
 	s.env.OnActivity(
 		activity.AddBillLineItemIfNotExistActivity,
 		mock.AnythingOfType("BillInfo"),
 		mock.AnythingOfType("BillLineItem"),
-	).Return(func(_ model.BillInfo, lineItem model.BillLineItem) error {
+	).Return(func(_ model.BillInfo, lineItem model.BillLineItem) (uint64, error) {
 		// Only the first will be called
 		s.Equal(lineItem1.Id.Id, lineItem.Id.Id)
-		return nil
+		return uint64(1), nil
 	})
-	s.env.OnActivity(activity.CloseBillActivity, mock.AnythingOfType("BillInfo")).Return(nil)
+	s.env.OnActivity(activity.CloseBillActivity, mock.AnythingOfType("BillInfo")).Return(uint64(1), nil)
 	s.env.RegisterDelayedCallback(func() {
 		s.env.UpdateWorkflow(
 			workflow.AddBillLineItemUpdate,
@@ -425,18 +425,79 @@ func (s *BillingWorkflowUnitTestSuite) Test_Workflow_AddSameUpdateId_OnlyFirstRe
 	}, result)
 }
 
+func (s *BillingWorkflowUnitTestSuite) Test_Workflow_AddSameItemId_OnlyFirstRecorded() {
+	// Arrange
+	billInfo, lineItem1, _ := s.defaultBillAndItems()
+	calledTimes := uint64(0)
+	s.env.OnActivity(activity.CreateBillIfNotExistActivity, mock.AnythingOfType("BillInfo")).Return(uint64(1), nil)
+	s.env.OnActivity(
+		activity.AddBillLineItemIfNotExistActivity,
+		mock.AnythingOfType("BillInfo"),
+		mock.AnythingOfType("BillLineItem"),
+	).Return(func(_ model.BillInfo, lineItem model.BillLineItem) (uint64, error) {
+		// Mimic idempotence
+		updateCount := 1 - calledTimes
+		calledTimes = 1
+		return updateCount, nil
+	}).Twice()
+	s.env.OnActivity(activity.CloseBillActivity, mock.AnythingOfType("BillInfo")).Return(uint64(1), nil)
+	s.env.RegisterDelayedCallback(func() {
+		s.env.UpdateWorkflow(
+			workflow.AddBillLineItemUpdate,
+			"1d1209d3-e60d-4d9c-ae7c-3282f8f5c9b4",
+			&testsuite.TestUpdateCallback{
+				OnAccept:   func() {},
+				OnComplete: func(result interface{}, err error) { s.NoError(err) },
+				OnReject:   func(err error) { s.FailNow("Should not reach here") },
+			},
+			lineItem1)
+	}, 1*time.Second)
+	s.env.RegisterDelayedCallback(func() {
+		s.env.UpdateWorkflow(
+			workflow.AddBillLineItemUpdate,
+			"ed20aa79-5ddc-4510-a5a3-cda08372e273",
+			&testsuite.TestUpdateCallback{
+				OnAccept:   func() {},
+				OnComplete: func(result interface{}, err error) { s.NoError(err) },
+				OnReject:   func(err error) { s.FailNow("Should not reach here") },
+			},
+			// Same line item
+			lineItem1)
+	}, 2*time.Second)
+
+	// Act
+	s.env.ExecuteWorkflow(workflow.BillingWorkflow, billInfo, time.Minute)
+
+	// Assert
+	s.True(s.env.IsWorkflowCompleted())
+	err := s.env.GetWorkflowError()
+	s.NoError(err)
+	encodedState, err := s.env.QueryWorkflow(workflow.GetPendingBillStateQuery)
+	s.NoError(err)
+	var receivedState workflow.BillingState
+	encodedState.Get(&receivedState)
+	s.Equal(uint64(1), receivedState.BillLineItemCount)
+	var result workflow.BillingState
+	s.env.GetWorkflowResult(&result)
+	s.Equal(workflow.BillingState{
+		BillInfo:          billInfo,
+		BillLineItemCount: 1,
+		Total:             workflow.TotalAmount{Total: model.Amount{Number: 100, CurrencyCode: "USD"}, Ok: true},
+	}, result)
+}
+
 func (s *BillingWorkflowUnitTestSuite) Test_Workflow_CloseAtMaturity_With2Items_TotalOverflow() {
 	// Arrange
 	billInfo, lineItem1, lineItem2 := s.defaultBillAndItems()
 	// Adding to it can only overflow
 	lineItem1.Amount.Number = math.MaxInt64
-	s.env.OnActivity(activity.CreateBillIfNotExistActivity, mock.AnythingOfType("BillInfo")).Return(nil)
+	s.env.OnActivity(activity.CreateBillIfNotExistActivity, mock.AnythingOfType("BillInfo")).Return(uint64(1), nil)
 	s.env.OnActivity(
 		activity.AddBillLineItemIfNotExistActivity,
 		mock.AnythingOfType("BillInfo"),
 		mock.AnythingOfType("BillLineItem"),
-	).Return(nil).Twice()
-	s.env.OnActivity(activity.CloseBillActivity, mock.AnythingOfType("BillInfo")).Return(nil)
+	).Return(uint64(1), nil).Twice()
+	s.env.OnActivity(activity.CloseBillActivity, mock.AnythingOfType("BillInfo")).Return(uint64(1), nil)
 	s.env.RegisterDelayedCallback(func() {
 		s.env.UpdateWorkflow(
 			workflow.AddBillLineItemUpdate,
@@ -503,5 +564,60 @@ func (s *BillingWorkflowUnitTestSuite) Test_Workflow_CloseAtMaturity_With2Items_
 		BillInfo:          billInfo,
 		BillLineItemCount: 2,
 		Total:             workflow.TotalAmount{Total: model.Amount{}, Ok: false},
+	}, result)
+}
+
+func (s *BillingWorkflowUnitTestSuite) Test_Workflow_CannotAddItemAfterClose() {
+	// Arrange
+	billInfo, lineItem1, lineItem2 := s.defaultBillAndItems()
+	s.env.OnActivity(activity.CreateBillIfNotExistActivity, mock.AnythingOfType("BillInfo")).Return(uint64(1), nil)
+	s.env.OnActivity(
+		activity.AddBillLineItemIfNotExistActivity,
+		mock.AnythingOfType("BillInfo"),
+		mock.AnythingOfType("BillLineItem"),
+	).Return(uint64(1), nil)
+	s.env.OnActivity(activity.CloseBillActivity, mock.AnythingOfType("BillInfo")).Return(uint64(1), nil)
+	s.env.RegisterDelayedCallback(func() {
+		s.env.UpdateWorkflow(
+			workflow.AddBillLineItemUpdate,
+			"1d1209d3-e60d-4d9c-ae7c-3282f8f5c9b4",
+			&testsuite.TestUpdateCallback{
+				OnAccept:   func() {},
+				OnComplete: func(result interface{}, err error) { s.NoError(err) },
+				OnReject:   func(err error) { s.FailNow("Should not reach here") },
+			},
+			lineItem1)
+	}, 1*time.Second)
+	s.env.RegisterDelayedCallback(func() {
+		s.True(s.env.IsWorkflowCompleted())
+		s.env.UpdateWorkflow(
+			workflow.AddBillLineItemUpdate,
+			"ed20aa79-5ddc-4510-a5a3-cda08372e273",
+			&testsuite.TestUpdateCallback{
+				OnAccept:   func() { s.FailNow("Should not reach here") },
+				OnComplete: func(result interface{}, err error) { s.FailNow("Should not reach here") },
+				OnReject:   func(err error) { s.FailNow("Should not reach here") },
+			},
+			lineItem2)
+	}, 5*time.Second) // After maturity
+
+	// Act
+	s.env.ExecuteWorkflow(workflow.BillingWorkflow, billInfo, 2*time.Second)
+
+	// Assert
+	s.True(s.env.IsWorkflowCompleted())
+	err := s.env.GetWorkflowError()
+	s.NoError(err)
+	encodedState, err := s.env.QueryWorkflow(workflow.GetPendingBillStateQuery)
+	s.NoError(err)
+	var receivedState workflow.BillingState
+	encodedState.Get(&receivedState)
+	s.Equal(uint64(1), receivedState.BillLineItemCount)
+	var result workflow.BillingState
+	s.env.GetWorkflowResult(&result)
+	s.Equal(workflow.BillingState{
+		BillInfo:          billInfo,
+		BillLineItemCount: 1,
+		Total:             workflow.TotalAmount{Total: model.Amount{Number: 100, CurrencyCode: "USD"}, Ok: true},
 	}, result)
 }

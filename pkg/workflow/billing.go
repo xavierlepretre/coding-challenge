@@ -67,14 +67,16 @@ func defaultActivityOptions() workflow.ActivityOptions {
 	}
 }
 
-func (state *billingState) createBillIfNotExistSyncActivity(ctx workflow.Context) error {
+func (state *billingState) createBillIfNotExistSyncActivity(ctx workflow.Context) (uint64, error) {
 	state.logger.Info("Creating bill if it does not exist", "Bill", state.BillInfo)
 	ctxWithOptions := workflow.WithActivityOptions(ctx, defaultActivityOptions())
-	return workflow.ExecuteActivity(
+	var updateCount uint64
+	e := workflow.ExecuteActivity(
 		ctxWithOptions,
 		activity.CreateBillIfNotExistActivity,
 		state.BillInfo, // Potential argument error not caught at compile time?
-	).Get(ctxWithOptions, nil)
+	).Get(ctxWithOptions, &updateCount)
+	return updateCount, e
 }
 
 func (state *billingState) validateBillLineItem(ctv workflow.Context, lineItem model.BillLineItem) error {
@@ -85,24 +87,27 @@ func (state *billingState) validateBillLineItem(ctv workflow.Context, lineItem m
 func (state *billingState) addBillLineItemIfNotExistSyncActivity(ctx workflow.Context, lineItem model.BillLineItem) (intermediateState BillingState, e error) {
 	state.logger.Info("Adding bill line item if it does not exist", "Bill", state.BillInfo, "Line item", lineItem)
 	ctxWithOptions := workflow.WithActivityOptions(ctx, defaultActivityOptions())
+	var updateCount uint64
 	e = workflow.ExecuteActivity(
 		ctxWithOptions,
 		activity.AddBillLineItemIfNotExistActivity,
 		state.BillInfo,
 		lineItem,
-	).Get(ctxWithOptions, nil)
-	if e == nil {
-		state.BillLineItemCount++
+	).Get(ctxWithOptions, &updateCount)
+	if e == nil && 0 < updateCount {
+		state.BillLineItemCount += updateCount
 		state.Total.Add(lineItem.Amount)
 		state.logger.Info("Bill line item added", "Total", state.Total, "Amount", lineItem.Amount)
 	}
 	return state.Clone(), e
 }
 
-func (state *billingState) closeBillSyncActivity(ctx workflow.Context) error {
+func (state *billingState) closeBillSyncActivity(ctx workflow.Context) (uint64, error) {
 	state.logger.Info("Bill line items workflow completed", "Bill", state.BillInfo, "Final count value", state.BillLineItemCount)
 	ctxWithOptions := workflow.WithActivityOptions(ctx, defaultActivityOptions())
-	return workflow.ExecuteActivity(ctxWithOptions, activity.CloseBillActivity, state.BillInfo).Get(ctxWithOptions, nil)
+	var updateCount uint64
+	e := workflow.ExecuteActivity(ctxWithOptions, activity.CloseBillActivity, state.BillInfo).Get(ctxWithOptions, &updateCount)
+	return updateCount, e
 }
 
 func BillingWorkflow(ctx workflow.Context, billInfo model.BillInfo, duration time.Duration) (count BillingState, e error) {
@@ -123,7 +128,7 @@ func BillingWorkflow(ctx workflow.Context, billInfo model.BillInfo, duration tim
 		return state.Clone(), NegativeDurationError{duration}
 	}
 
-	if e = state.createBillIfNotExistSyncActivity(ctx); e != nil {
+	if _, e := state.createBillIfNotExistSyncActivity(ctx); e != nil {
 		return state.Clone(), e
 	}
 
@@ -160,6 +165,6 @@ func BillingWorkflow(ctx workflow.Context, billInfo model.BillInfo, duration tim
 		})
 	selector.Select(ctx) // Wait until either the timer expires or the close signal is received
 
-	e = state.closeBillSyncActivity(ctx)
+	_, e = state.closeBillSyncActivity(ctx)
 	return state.Clone(), e
 }
