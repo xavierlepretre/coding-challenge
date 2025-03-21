@@ -32,29 +32,91 @@ You need:
 
 * Go version 1.24.1 or compatible.
 * [Temporal CLI](https://docs.temporal.io/cli).
+* Mockgen:
+
+    ```sh
+    go install github.com/golang/mock/mockgen@v1.6.0
+    ```
 
 ## Run unit tests
 
 ```sh
-go test ./... -v
+go test ./pkg/model/... -v
+go test ./pkg/workflow/... -v
 ```
 
 Or:
 
 ```sh
-docker run --rm -it -v $(pwd):/app -w /app golang:1.24.1 go test ./... -v
+docker run --rm -it -v $(pwd):/app -w /app golang:1.24.1 go test ./pkg/model/... -v
+docker run --rm -it -v $(pwd):/app -w /app golang:1.24.1 go test ./pkg/workflow/... -v
 ```
 
-## Run integration tests
-
-Launch a billing worker:
+For the Encore.dev part:
 
 ```sh
-go run main/billing_worker.go --task-queue
+encore test ./...
 ```
 
-In another terminal, launch Temporal CLI:
+Or:
+
+```sh
+docker run --rm -it -v $(pwd):/app -w /app encoredotdev/encore:1.46.1 test ./... -v
+```
+
+If you need to recreate the mocks:
+
+```sh
+go generate ./...
+```
+
+And do not forget to adjust the created file as per the comment in [`gen_command.go`](./pkg/rest/mocks/gen_command.go).
+
+## Run a local live test
+
+In terminal 1, launch Temporal CLI:
 
 ```sh
 temporal server start-dev --namespace billing --db-filename temporal.db
+```
+
+In terminal 2, launch a billing worker:
+
+```sh
+go run main/billing_worker.go --task-queue local-billing
+```
+
+In terminal 3, launch the REST API:
+
+```sh
+encore run
+```
+
+### Create a new bill
+
+In the [opened browser](http://localhost:9400/sfet4/requests):
+
+* Pick `rest.OpenNewBill`.
+* Enter request as:
+
+    ```json
+    {
+        "currency_code": "USD",
+        "close_time": "2025-03-31T23:59:59Z"
+    }
+    ```
+
+* Use `token-alice` as your authentication data.
+* Press <kbd>CALL API</kbd>
+
+It should return something like:
+
+```json
+{"id":"4ba283ee-1d1d-4146-9b67-3dc5b2a21328"}
+```
+
+This is your bill id for the next steps.
+
+```sh
+curl -X POST -H "Content-Type: application/json" -H "Authorization: Bearer: token-alice"
 ```
