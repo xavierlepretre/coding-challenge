@@ -13,6 +13,7 @@ import (
 	"encore.dev/beta/errs"
 	"encore.dev/rlog"
 	"go.temporal.io/sdk/client"
+	"go.temporal.io/sdk/converter"
 )
 
 // Use an environment-specific task queue so we can use the same
@@ -61,6 +62,10 @@ type OpenNewBillResponse struct {
 	Id string `json:"id"`
 }
 
+func CreateWorkflowId(billId string) string {
+	return fmt.Sprintf("create-bill-%v", billId)
+}
+
 //encore:api auth method=POST path=/bills
 func (s *BillingService) OpenNewBill(ctx context.Context, openNewBillRequest *OpenNewBillRequest) (*OpenNewBillResponse, error) {
 	customerId, ok := auth.UserID()
@@ -74,7 +79,7 @@ func (s *BillingService) OpenNewBill(ctx context.Context, openNewBillRequest *Op
 
 	billId := s.billIdGenerator.New()
 	options := client.StartWorkflowOptions{
-		ID:        fmt.Sprintf("create-bill-%v", billId),
+		ID:        CreateWorkflowId(billId),
 		TaskQueue: greetingTaskQueue,
 	}
 	billInfo := model.BillInfo{
@@ -91,22 +96,30 @@ func (s *BillingService) OpenNewBill(ctx context.Context, openNewBillRequest *Op
 		rlog.Error("failed to execute workflow", "err", err)
 		return nil, errs.WrapCode(err, errs.Internal, "workflow failed to execute")
 	}
-	rlog.Info("started workflow", "id", wr.GetID(), "run_id", wr.GetRunID())
+	runId := wr.GetRunID()
+	rlog.Info("started workflow", "id", wr.GetID(), "run_id", runId)
 
 	// Get the intermediate billing state
-	encodedResult, err := s.client.QueryWorkflow(ctx, "", options.ID, workflow.GetPendingBillStateQuery)
+	var encodedResult converter.EncodedValue
+	for i := 0; i < 10; i++ { // HACK ugly wait for the workflow to reach registration of the query handler
+		encodedResult, err = s.client.QueryWorkflow(ctx, options.ID, runId, workflow.GetPendingBillStateQuery)
+		if err == nil {
+			break
+		}
+		rlog.Error("failed to query workflow", "attempt", i, "err", err)
+		time.Sleep(500 * time.Millisecond)
+	}
 	if err != nil {
-		rlog.Error("failed to query workflow", "err", err)
 		return nil, errs.WrapCode(err, errs.Unavailable, "failed to query intermediate state")
 	}
 	var currentState workflow.BillingState
 	err = encodedResult.Get(&currentState)
 	if err != nil {
-		rlog.Error("failed to query workflow", "err", err)
+		rlog.Error("failed to decode intermediate state", "err", err)
 		return nil, errs.WrapCode(err, errs.Internal, "failed to decode intermediate state")
 	} else if currentState.BillInfo.Id.Id != billId {
-		rlog.Error("failed to query correct workflow", "err", err)
-		return nil, errs.WrapCode(err, errs.Unavailable, "failed to query correct workflow")
+		rlog.Error("failed to query correct workflow", "billId", billId, "state id", currentState.BillInfo.Id.Id)
+		return nil, errs.WrapCode(err, errs.Internal, "failed to query correct workflow")
 	}
 	return &OpenNewBillResponse{Id: billId}, nil
 }
