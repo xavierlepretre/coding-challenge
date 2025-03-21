@@ -4,7 +4,6 @@ import (
 	"coding-challenge/pkg/model"
 	"coding-challenge/pkg/workflow"
 	"context"
-	"errors"
 	"fmt"
 	"time"
 
@@ -235,9 +234,63 @@ type AddBillLineItemRequest struct {
 }
 
 type AddBillLineItemResponse struct {
+	Id            string             `json:"id"`
+	CurrencyCode  model.CurrencyCode `json:"currency_code"`
+	LineItemCount uint64             `json:"line_item_count"`
+	TotalOk       string             `json:"total_ok"` // y/n instead of true/false
+	Total         int64              `json:"total"`
 }
 
 //encore:api auth method=POST path=/bill/:id/line-items
-func (s *BillingService) AddBillLineItem(ctx context.Context, id string, addBillLineItemRequestion *AddBillLineItemRequest) (*AddBillLineItemResponse, error) {
-	return nil, errors.New("not implemented ")
+func (s *BillingService) AddBillLineItem(ctx context.Context, id string, addBillLineItemRequest *AddBillLineItemRequest) (*AddBillLineItemResponse, error) {
+	customerId, ok := auth.UserID()
+	if !ok {
+		rlog.Error("failed to get user id", ok)
+		return nil, &errs.Error{
+			Code:    errs.Unauthenticated,
+			Message: "failed to get user id",
+		}
+	}
+
+	updateId := s.billIdGenerator.New()
+	lineItemId := s.billIdGenerator.New()
+	options := client.UpdateWorkflowOptions{
+		UpdateID:   updateId,
+		WorkflowID: CreateWorkflowId(id),
+		UpdateName: workflow.AddBillLineItemUpdate,
+		Args: []interface{}{
+			model.BillLineItem{
+				Id: model.BillLineItemId{
+					BillId: model.BillId{CustomerId: model.CustomerId(customerId), Id: id},
+					Id:     lineItemId,
+				},
+				Description: addBillLineItemRequest.Description,
+				Amount: model.Amount{
+					CurrencyCode: addBillLineItemRequest.CurrencyCode,
+					Number:       addBillLineItemRequest.Amount,
+				},
+			},
+		},
+		WaitForStage: client.WorkflowUpdateStageCompleted,
+	}
+
+	updateHandle, err := s.client.UpdateWorkflow(ctx, options)
+	if err != nil {
+		rlog.Error("failed to add line item", "billId", id, "err", err)
+		return nil, errs.WrapCode(err, errs.Internal, "failed to add line item")
+	}
+	var updatedState workflow.BillingState
+	err = updateHandle.Get(ctx, &updatedState)
+	if err != nil {
+		rlog.Error("failed to get updated workflow state", "billId", id, "err", err)
+		return nil, errs.WrapCode(err, errs.Internal, "failed to get updated workflow state")
+	}
+	rlog.Info("added line item to workflow", "id", id)
+	return &AddBillLineItemResponse{
+		Id:            lineItemId,
+		CurrencyCode:  updatedState.BillInfo.CurrencyCode,
+		LineItemCount: updatedState.BillLineItemCount,
+		TotalOk:       getOkString(updatedState.Total),
+		Total:         updatedState.Total.Total.Number,
+	}, nil
 }

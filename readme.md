@@ -130,6 +130,31 @@ It should return something like:
 {"id":"4ba283ee-1d1d-4146-9b67-3dc5b2a21328","currency_code":"USD","status":0,"line_item_count":0,"total_ok":"y","total":0}
 ```
 
+### Add a line item
+
+In the [opened browser](http://localhost:9400/sfet4/requests):
+
+* Pick `rest.AddLineItem`.
+* Enter path as: `/bill/4ba283ee-1d1d-4146-9b67-3dc5b2a21328/line_items` or whichever value you had in the previous step.
+* Use `token-alice` as your authentication data.
+* Enter request as:
+    
+    ```json
+    {
+        "description": "Matchbox",
+        "amount": 100,
+        "currency_code": "USD"
+    }
+    ```
+
+* Press <kbd>CALL API</kbd>
+
+It should return something like:
+
+```json
+{"id":"fb93e3c7-e2ae-4ce1-9e4b-023dde5d0185","currency_code":"USD","line_item_count":1,"total_ok":"y","total":100}
+```
+
 ### Close the bill
 
 In the [opened browser](http://localhost:9400/sfet4/requests):
@@ -142,9 +167,5 @@ In the [opened browser](http://localhost:9400/sfet4/requests):
 It should return something like:
 
 ```json
-{"line_item_count":0,"total_ok":"y","total":0}
-```
-
-```sh
-curl -X POST -H "Content-Type: application/json" -H "Authorization: Bearer: token-alice"
+{"currency_code":"USD","line_item_count":1,"total_ok":"y","total":100}
 ```

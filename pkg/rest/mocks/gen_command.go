@@ -18,7 +18,9 @@ var _ client.WorkflowRun = &MockWorkflowRun{}
 // internal "go.temporal.io/sdk/internal"
 // with
 // internal "go.temporal.io/sdk/client"
-//
+
+//go:generate mockgen -destination=mock_workflow_update_handle.go -package=mocks go.temporal.io/sdk/client WorkflowUpdateHandle
+var _ client.WorkflowUpdateHandle = &MockWorkflowUpdateHandle{}
 
 //go:generate mockgen -destination=mock_encoded_value.go -package=mocks go.temporal.io/sdk/converter EncodedValue
 var _ converter.EncodedValue = &MockEncodedValue{}

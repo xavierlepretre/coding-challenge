@@ -73,6 +73,22 @@ func addCloseExpectations(ctrl *gomock.Controller, client *mocks.MockClient, fin
 	return workflowRun
 }
 
+func addAddLineItemExpectations(
+	ctrl *gomock.Controller,
+	client *mocks.MockClient,
+	billIdGenerator *mocks.MockBillIdGenerator,
+	lineItem model.BillLineItem,
+	updateId string,
+	updatedState workflow.BillingState,
+) *mocks.MockWorkflowUpdateHandle {
+	billIdGenerator.EXPECT().New().Return(updateId)
+	billIdGenerator.EXPECT().New().Return(lineItem.Id.Id)
+	updateHandle := mocks.NewMockWorkflowUpdateHandle(ctrl)
+	updateHandle.EXPECT().Get(gomock.Any(), gomock.Any()).SetArg(1, updatedState).Return(nil)
+	client.EXPECT().UpdateWorkflow(gomock.Any(), gomock.Any()).Return(updateHandle, nil)
+	return updateHandle
+}
+
 func TestOpenNewBill(t *testing.T) {
 	// Arrange
 	newBill := model.BillInfo{
@@ -205,6 +221,69 @@ func TestCloseBill(t *testing.T) {
 			LineItemCount: 0,
 			TotalOk:       "y",
 			Total:         0,
+		},
+		resp)
+}
+
+func TestAddLineItem(t *testing.T) {
+	// Arrange
+	newBill := model.BillInfo{
+		Id: model.BillId{
+			CustomerId: model.CustomerId("aec31fe6-04b5-4dbf-a024-b5f45db6f633"),
+			Id:         "fc03932f-2b53-4d07-ad55-24fc7d85e277",
+		},
+		CurrencyCode: "USD",
+		Status:       model.Open}
+	authedContext := auth.WithContext(context.Background(), auth.UID(newBill.Id.CustomerId), &rest.AuthData{})
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+	_, client, tokenDb, billIdGenerator := createBasicMocks(ctrl, newBill)
+	initialBillingState := workflow.BillingState{
+		BillInfo:          newBill,
+		BillLineItemCount: 0,
+		Total: workflow.TotalAmount{
+			Total: model.Amount{Number: 0, CurrencyCode: newBill.CurrencyCode},
+			Ok:    true,
+		},
+	}
+	addGetExpectations(ctrl, client, initialBillingState)
+	lineItem := model.BillLineItem{
+		Id:          model.BillLineItemId{BillId: newBill.Id, Id: "a579a2e5-9c31-473e-94ed-577c7cd14acd"},
+		Description: "Matchbox",
+		Amount:      model.Amount{Number: 100, CurrencyCode: "USD"},
+	}
+	updatedBillingState := workflow.BillingState{
+		BillInfo:          newBill,
+		BillLineItemCount: 1,
+		Total: workflow.TotalAmount{
+			Total: model.Amount{Number: 100, CurrencyCode: newBill.CurrencyCode},
+			Ok:    true,
+		},
+	}
+	s := rest.NewBillingService(client, rest.TokenDb(tokenDb), billIdGenerator)
+	_, err := s.OpenNewBill(authedContext, &rest.OpenNewBillRequest{
+		CurrencyCode: "USD",
+		CloseTime:    time.Now().Add(time.Minute),
+	})
+	assert.NoError(t, err)
+	_ = addAddLineItemExpectations(ctrl, client, billIdGenerator, lineItem, "a8f2784e-a7e6-45b6-ad09-8186422a9261", updatedBillingState)
+
+	// Act
+	resp, err := s.AddBillLineItem(authedContext, newBill.Id.Id, &rest.AddBillLineItemRequest{
+		Description:  "Matchbox",
+		Amount:       100,
+		CurrencyCode: "USD",
+	})
+
+	// Assert
+	assert.NoError(t, err)
+	assert.Equal(t,
+		&rest.AddBillLineItemResponse{
+			Id:            lineItem.Id.Id,
+			CurrencyCode:  "USD",
+			LineItemCount: 1,
+			TotalOk:       "y",
+			Total:         100,
 		},
 		resp)
 }
