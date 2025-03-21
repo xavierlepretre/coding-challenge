@@ -133,12 +133,57 @@ type GetBillResponse struct {
 	Status        model.BillStatus   `json:"status"` // open(0)/closed(1)
 	LineItemCount uint64             `json:"line_item_count"`
 	TotalOk       string             `json:"total_ok"` // y/n instead of true/false
-	Total         uint64             `json:"total"`
+	Total         int64              `json:"total"`
+}
+
+const TotalOkYes = "y"
+const TotalOkNo = "n"
+
+func getOkString(amount workflow.TotalAmount) string {
+	if amount.Ok {
+		return TotalOkYes
+	} else {
+		return TotalOkNo
+	}
 }
 
 //encore:api auth method=GET path=/bill/:id
 func (s *BillingService) GetBill(ctx context.Context, id string, getBillRequest *GetBillRequest) (*GetBillResponse, error) {
-	return nil, errors.New("not implemented ")
+	customerId, ok := auth.UserID()
+	if !ok {
+		rlog.Error("failed to get user id", ok)
+		return nil, &errs.Error{
+			Code:    errs.Unauthenticated,
+			Message: "failed to get user id",
+		}
+	}
+
+	encodedResult, err := s.client.QueryWorkflow(ctx, CreateWorkflowId(id), "", workflow.GetPendingBillStateQuery)
+	if err != nil {
+		rlog.Error("failed to query workflow", "err", err)
+		return nil, errs.WrapCode(err, errs.NotFound, "failed to query workflow")
+	}
+	var currentState workflow.BillingState
+	err = encodedResult.Get(&currentState)
+	if err != nil {
+		rlog.Error("failed to decode intermediate state", "err", err)
+		return nil, errs.WrapCode(err, errs.Internal, "failed to decode intermediate state")
+	} else if currentState.BillInfo.Id.Id != id {
+		rlog.Error("failed to query correct workflow", "id", id, "state id", currentState.BillInfo.Id.Id)
+		return nil, errs.WrapCode(err, errs.Internal, "failed to query correct workflow")
+	} else if currentState.BillInfo.Id.CustomerId != model.CustomerId(customerId) {
+		rlog.Error("failed to query workflow of correct customer", "customerId", customerId, "state customer id", currentState.BillInfo.Id.CustomerId)
+		return nil, errs.WrapCode(err, errs.Internal, "failed to query correct workflow")
+	}
+
+	return &GetBillResponse{
+		Id:            id,
+		CurrencyCode:  currentState.BillInfo.CurrencyCode,
+		Status:        currentState.BillInfo.Status,
+		LineItemCount: currentState.BillLineItemCount,
+		TotalOk:       getOkString(currentState.Total),
+		Total:         currentState.Total.Total.Number,
+	}, nil
 }
 
 type CloseBillRequest struct {
