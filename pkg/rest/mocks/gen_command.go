@@ -5,16 +5,23 @@ import (
 	"coding-challenge/pkg/rest"
 
 	"go.temporal.io/sdk/client"
+	converter "go.temporal.io/sdk/converter"
 )
 
 //go:generate mockgen -destination=mock_client.go -package=mocks go.temporal.io/sdk/client Client
 var _ client.Client = &MockClient{}
+
+//go:generate mockgen -destination=mock_workflow_run.go -package=mocks go.temporal.io/sdk/client WorkflowRun
+var _ client.WorkflowRun = &MockWorkflowRun{}
 
 // Then, in mock_client.go, replace:
 // internal "go.temporal.io/sdk/internal"
 // with
 // internal "go.temporal.io/sdk/client"
 //
+
+//go:generate mockgen -destination=mock_encoded_value.go -package=mocks go.temporal.io/sdk/converter EncodedValue
+var _ converter.EncodedValue = &MockEncodedValue{}
 
 //go:generate mockgen -destination=mock_tokendb.go -package=mocks -source=../auth.go
 var _ rest.TokenDb = &MockTokenDb{}
