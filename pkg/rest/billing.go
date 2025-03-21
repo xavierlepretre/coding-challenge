@@ -190,14 +190,42 @@ type CloseBillRequest struct {
 }
 
 type CloseBillResponse struct {
-	LineItemCount uint64 `json:"line_item_count"`
-	TotalOk       string `json:"total_ok"` // y/n instead of true/false
-	Total         uint64 `json:"total"`
+	CurrencyCode  model.CurrencyCode `json:"currency_code"`
+	LineItemCount uint64             `json:"line_item_count"`
+	TotalOk       string             `json:"total_ok"` // y/n instead of true/false
+	Total         int64              `json:"total"`
 }
 
 //encore:api auth method=PATCH path=/bill/:id/close
 func (s *BillingService) CloseBill(ctx context.Context, id string, closeBillRequest *CloseBillRequest) (*CloseBillResponse, error) {
-	return nil, errors.New("not implemented ")
+	_, ok := auth.UserID()
+	if !ok {
+		rlog.Error("failed to get user id", ok)
+		return nil, &errs.Error{
+			Code:    errs.Unauthenticated,
+			Message: "failed to get user id",
+		}
+	}
+
+	err := s.client.SignalWorkflow(ctx, CreateWorkflowId(id), "", workflow.CloseBillEarlySignal, "API initiated")
+	if err != nil {
+		rlog.Error("failed to close workflow", "err", err)
+		return nil, errs.WrapCode(err, errs.Internal, "workflow failed to close")
+	}
+	rlog.Info("closed workflow", "id", id)
+	wr := s.client.GetWorkflow(ctx, CreateWorkflowId(id), "")
+	var finalState workflow.BillingState
+	err = wr.Get(ctx, &finalState)
+	if err != nil {
+		rlog.Error("failed to get workflow final state", "err", err)
+		return nil, errs.WrapCode(err, errs.Internal, "failed to get workflow final state")
+	}
+	return &CloseBillResponse{
+		CurrencyCode:  finalState.BillInfo.CurrencyCode,
+		LineItemCount: finalState.BillLineItemCount,
+		TotalOk:       getOkString(finalState.Total),
+		Total:         finalState.Total.Total.Number,
+	}, nil
 }
 
 type AddBillLineItemRequest struct {

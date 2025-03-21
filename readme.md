@@ -130,6 +130,21 @@ It should return something like:
 {"id":"4ba283ee-1d1d-4146-9b67-3dc5b2a21328","currency_code":"USD","status":0,"line_item_count":0,"total_ok":"y","total":0}
 ```
 
+### Close the bill
+
+In the [opened browser](http://localhost:9400/sfet4/requests):
+
+* Pick `rest.CloseBill`.
+* Enter path as: `/bill/4ba283ee-1d1d-4146-9b67-3dc5b2a21328/close` or whichever value you had in the previous step.
+* Use `token-alice` as your authentication data.
+* Press <kbd>CALL API</kbd>
+
+It should return something like:
+
+```json
+{"line_item_count":0,"total_ok":"y","total":0}
+```
+
 ```sh
 curl -X POST -H "Content-Type: application/json" -H "Authorization: Bearer: token-alice"
 ```
