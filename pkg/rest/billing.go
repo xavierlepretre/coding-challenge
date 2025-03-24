@@ -138,8 +138,8 @@ type GetBillResponse struct {
 const TotalOkYes = "y"
 const TotalOkNo = "n"
 
-func getOkString(amount workflow.TotalAmount) string {
-	if amount.Ok {
+func formatTotalOk(isOk bool) string {
+	if isOk {
 		return TotalOkYes
 	} else {
 		return TotalOkNo
@@ -180,7 +180,7 @@ func (s *BillingService) GetBill(ctx context.Context, id string, getBillRequest 
 		CurrencyCode:  currentState.BillInfo.CurrencyCode,
 		Status:        currentState.BillInfo.Status,
 		LineItemCount: currentState.BillLineItemCount,
-		TotalOk:       getOkString(currentState.Total),
+		TotalOk:       formatTotalOk(currentState.Total.Ok),
 		Total:         currentState.Total.Total.Number,
 	}, nil
 }
@@ -222,7 +222,7 @@ func (s *BillingService) CloseBill(ctx context.Context, id string, closeBillRequ
 	return &CloseBillResponse{
 		CurrencyCode:  finalState.BillInfo.CurrencyCode,
 		LineItemCount: finalState.BillLineItemCount,
-		TotalOk:       getOkString(finalState.Total),
+		TotalOk:       formatTotalOk(finalState.Total.Ok),
 		Total:         finalState.Total.Total.Number,
 	}, nil
 }
@@ -290,7 +290,7 @@ func (s *BillingService) AddBillLineItem(ctx context.Context, id string, addBill
 		Id:            lineItemId,
 		CurrencyCode:  updatedState.BillInfo.CurrencyCode,
 		LineItemCount: updatedState.BillLineItemCount,
-		TotalOk:       getOkString(updatedState.Total),
+		TotalOk:       formatTotalOk(updatedState.Total.Ok),
 		Total:         updatedState.Total.Total.Number,
 	}, nil
 }
