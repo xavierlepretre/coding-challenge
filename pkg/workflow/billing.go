@@ -55,6 +55,8 @@ func (state *billingState) Clone() BillingState {
 	}
 }
 
+type CloseSignalReceiveType string
+
 func defaultActivityOptions() workflow.ActivityOptions {
 	return workflow.ActivityOptions{
 		StartToCloseTimeout: activity.DefaultActivityTimeout,
@@ -159,7 +161,7 @@ func BillingWorkflow(ctx workflow.Context, billInfo model.BillInfo, duration tim
 	selector.AddReceive(
 		workflow.GetSignalChannel(ctx, CloseBillEarlySignal),
 		func(channel workflow.ReceiveChannel, more bool) {
-			var receivedUpdate string
+			var receivedUpdate CloseSignalReceiveType
 			channel.Receive(ctx, &receivedUpdate)
 			state.logger.Info("Received signal to close bill early:", receivedUpdate)
 		})
