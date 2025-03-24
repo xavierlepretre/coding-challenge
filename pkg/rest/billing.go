@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"encore.dev"
-	"encore.dev/beta/auth"
 	"encore.dev/beta/errs"
 	"encore.dev/rlog"
 	"go.temporal.io/sdk/client"
@@ -67,15 +66,10 @@ func CreateWorkflowId(billId string) string {
 
 //encore:api auth method=POST path=/bills
 func (s *BillingService) OpenNewBill(ctx context.Context, openNewBillRequest *OpenNewBillRequest) (*OpenNewBillResponse, error) {
-	customerId, ok := auth.UserID()
-	if !ok {
-		rlog.Error("failed to get user id", ok)
-		return nil, &errs.Error{
-			Code:    errs.Unauthenticated,
-			Message: "failed to get user id",
-		}
+	customerId, err := getAuthenticatedCustomerId()
+	if err != nil {
+		return nil, err
 	}
-
 	billId := s.billIdGenerator.New()
 	options := client.StartWorkflowOptions{
 		ID:        CreateWorkflowId(billId),
@@ -83,7 +77,7 @@ func (s *BillingService) OpenNewBill(ctx context.Context, openNewBillRequest *Op
 	}
 	billInfo := model.BillInfo{
 		Id: model.BillId{
-			CustomerId: model.CustomerId(customerId),
+			CustomerId: *customerId,
 			Id:         billId,
 		},
 		CurrencyCode: openNewBillRequest.CurrencyCode,
@@ -148,15 +142,10 @@ func formatTotalOk(isOk bool) string {
 
 //encore:api auth method=GET path=/bill/:id
 func (s *BillingService) GetBill(ctx context.Context, id string, getBillRequest *GetBillRequest) (*GetBillResponse, error) {
-	customerId, ok := auth.UserID()
-	if !ok {
-		rlog.Error("failed to get user id", ok)
-		return nil, &errs.Error{
-			Code:    errs.Unauthenticated,
-			Message: "failed to get user id",
-		}
+	customerId, err := getAuthenticatedCustomerId()
+	if err != nil {
+		return nil, err
 	}
-
 	encodedResult, err := s.client.QueryWorkflow(ctx, CreateWorkflowId(id), "", workflow.GetPendingBillStateQuery)
 	if err != nil {
 		rlog.Error("failed to query workflow", "err", err)
@@ -170,7 +159,7 @@ func (s *BillingService) GetBill(ctx context.Context, id string, getBillRequest 
 	} else if currentState.BillInfo.Id.Id != id {
 		rlog.Error("failed to query correct workflow", "id", id, "state id", currentState.BillInfo.Id.Id)
 		return nil, errs.WrapCode(err, errs.Internal, "failed to query correct workflow")
-	} else if currentState.BillInfo.Id.CustomerId != model.CustomerId(customerId) {
+	} else if currentState.BillInfo.Id.CustomerId != *customerId {
 		rlog.Error("failed to query workflow of correct customer", "customerId", customerId, "state customer id", currentState.BillInfo.Id.CustomerId)
 		return nil, errs.WrapCode(err, errs.Internal, "failed to query correct workflow")
 	}
@@ -197,16 +186,11 @@ type CloseBillResponse struct {
 
 //encore:api auth method=PATCH path=/bill/:id/close
 func (s *BillingService) CloseBill(ctx context.Context, id string, closeBillRequest *CloseBillRequest) (*CloseBillResponse, error) {
-	_, ok := auth.UserID()
-	if !ok {
-		rlog.Error("failed to get user id", ok)
-		return nil, &errs.Error{
-			Code:    errs.Unauthenticated,
-			Message: "failed to get user id",
-		}
+	_, err := getAuthenticatedCustomerId()
+	if err != nil {
+		return nil, err
 	}
-
-	err := s.client.SignalWorkflow(ctx, CreateWorkflowId(id), "", workflow.CloseBillEarlySignal, "API initiated")
+	err = s.client.SignalWorkflow(ctx, CreateWorkflowId(id), "", workflow.CloseBillEarlySignal, "API initiated")
 	if err != nil {
 		rlog.Error("failed to close workflow", "err", err)
 		return nil, errs.WrapCode(err, errs.Internal, "workflow failed to close")
@@ -243,15 +227,10 @@ type AddBillLineItemResponse struct {
 
 //encore:api auth method=POST path=/bill/:id/line-items
 func (s *BillingService) AddBillLineItem(ctx context.Context, id string, addBillLineItemRequest *AddBillLineItemRequest) (*AddBillLineItemResponse, error) {
-	customerId, ok := auth.UserID()
-	if !ok {
-		rlog.Error("failed to get user id", ok)
-		return nil, &errs.Error{
-			Code:    errs.Unauthenticated,
-			Message: "failed to get user id",
-		}
+	customerId, err := getAuthenticatedCustomerId()
+	if err != nil {
+		return nil, err
 	}
-
 	updateId := s.billIdGenerator.New()
 	lineItemId := s.billIdGenerator.New()
 	options := client.UpdateWorkflowOptions{
@@ -261,7 +240,7 @@ func (s *BillingService) AddBillLineItem(ctx context.Context, id string, addBill
 		Args: []interface{}{
 			model.BillLineItem{
 				Id: model.BillLineItemId{
-					BillId: model.BillId{CustomerId: model.CustomerId(customerId), Id: id},
+					BillId: model.BillId{CustomerId: *customerId, Id: id},
 					Id:     lineItemId,
 				},
 				Description: addBillLineItemRequest.Description,
