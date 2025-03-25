@@ -6,6 +6,24 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+func TestBillIdWorksAsId(t *testing.T) {
+	// Arrange
+	billId1 := BillId{CustomerId: "alice", Id: "6c5bb10f-6fd2-49be-a75a-806ad1c4cfcf"}
+	billId2 := BillId{CustomerId: "alice", Id: "6c5bb10f-6fd2-49be-a75a-806ad1c4cfcf"}
+	billId3 := BillId{CustomerId: "alice", Id: "6c5bb10f-6fd2-49be-a75a-806ad1c4cfce"} // Slight change in Id
+	billId4 := BillId{CustomerId: "alicf", Id: "6c5bb10f-6fd2-49be-a75a-806ad1c4cfcf"} // Slight change in CustomerId
+
+	// Act nil
+
+	// Assert
+	assert.Equal(t, billId1, billId2)
+	assert.True(t, billId1 == billId2)
+	assert.NotEqual(t, billId1, billId3)
+	assert.True(t, billId1 != billId3)
+	assert.NotEqual(t, billId1, billId4)
+	assert.True(t, billId1 != billId4)
+}
+
 func TestAddLineItemOnEmpty(t *testing.T) {
 	// Arrange
 	billId := BillId{CustomerId: "alice", Id: "6c5bb10f-6fd2-49be-a75a-806ad1c4cfcf"}
