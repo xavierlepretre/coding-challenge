@@ -64,7 +64,7 @@ func (state *billingState) createBillIfNotExistSyncActivity(ctx workflow.Context
 	var updateCount uint64
 	e := workflow.ExecuteActivity(
 		ctxWithOptions,
-		activity.CreateBillIfNotExistActivity,
+		(&activity.DummyActivityHost{}).CreateBillIfNotExistActivity,
 		state.BillInfo, // Potential argument error not caught at compile time?
 	).Get(ctxWithOptions, &updateCount)
 	return updateCount, e
@@ -81,9 +81,9 @@ func (state *billingState) addBillLineItemIfNotExistSyncActivity(ctx workflow.Co
 	var updateCount uint64
 	e = workflow.ExecuteActivity(
 		ctxWithOptions,
-		activity.AddBillLineItemIfNotExistActivity,
-		state.BillInfo,
+		(&activity.DummyActivityHost{}).AddBillLineItemIfNotExistActivity,
 		lineItem,
+		state.Total,
 	).Get(ctxWithOptions, &updateCount)
 	if e == nil && 0 < updateCount {
 		state.BillLineItemCount += updateCount
@@ -97,7 +97,7 @@ func (state *billingState) closeBillSyncActivity(ctx workflow.Context) (uint64, 
 	state.logger.Info("Bill line items workflow completed", "Bill", state.BillInfo, "Final count value", state.BillLineItemCount)
 	ctxWithOptions := workflow.WithActivityOptions(ctx, defaultActivityOptions())
 	var updateCount uint64
-	e := workflow.ExecuteActivity(ctxWithOptions, activity.CloseBillActivity, state.BillInfo).Get(ctxWithOptions, &updateCount)
+	e := workflow.ExecuteActivity(ctxWithOptions, (&activity.DummyActivityHost{}).CloseBillActivity, state.BillInfo).Get(ctxWithOptions, &updateCount)
 	return updateCount, e
 }
 

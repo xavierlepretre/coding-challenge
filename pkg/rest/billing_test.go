@@ -1,6 +1,7 @@
 package rest_test
 
 import (
+	"coding-challenge/pkg/db"
 	"coding-challenge/pkg/model"
 	"coding-challenge/pkg/rest"
 	"coding-challenge/pkg/rest/mocks"
@@ -12,6 +13,7 @@ import (
 	"encore.dev/beta/auth"
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
+	"go.temporal.io/api/serviceerror"
 )
 
 func encodeMockedState(ctrl *gomock.Controller, state workflow.BillingState) *mocks.MockEncodedValue {
@@ -28,6 +30,7 @@ func createBasicMocks(ctrl *gomock.Controller, billInfo model.BillInfo) (
 	*mocks.MockClient,
 	*mocks.MockTokenDb,
 	*mocks.MockBillIdGenerator,
+	*mocks.MockBillDatabase,
 ) {
 	worflowRun := mocks.NewMockWorkflowRun(ctrl)
 	worflowRun.EXPECT().GetID().Return("mock-wr-id")
@@ -47,7 +50,8 @@ func createBasicMocks(ctrl *gomock.Controller, billInfo model.BillInfo) (
 	billIdGenerator.EXPECT().
 		New().
 		Return(billInfo.Id.Id)
-	return worflowRun, client, tokenDb, billIdGenerator
+	billDatabase := mocks.NewMockBillDatabase(ctrl)
+	return worflowRun, client, tokenDb, billIdGenerator, billDatabase
 }
 
 func addGetExpectations(ctrl *gomock.Controller, client *mocks.MockClient, billingStates ...workflow.BillingState) {
@@ -101,7 +105,7 @@ func TestOpenNewBill(t *testing.T) {
 	authedContext := auth.WithContext(context.Background(), auth.UID(newBill.Id.CustomerId), &rest.AuthData{})
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
-	_, client, tokenDb, billIdGenerator := createBasicMocks(ctrl, newBill)
+	_, client, tokenDb, billIdGenerator, billDatabase := createBasicMocks(ctrl, newBill)
 	initialBillingState := workflow.BillingState{
 		BillInfo:          newBill,
 		BillLineItemCount: 0,
@@ -111,7 +115,7 @@ func TestOpenNewBill(t *testing.T) {
 		},
 	}
 	addGetExpectations(ctrl, client, initialBillingState)
-	s := rest.NewBillingService(client, rest.TokenDb(tokenDb), billIdGenerator)
+	s := rest.NewBillingService(client, rest.TokenDb(tokenDb), billIdGenerator, billDatabase)
 
 	// Act
 	resp, err := s.OpenNewBill(authedContext, &rest.OpenNewBillRequest{
@@ -126,7 +130,7 @@ func TestOpenNewBill(t *testing.T) {
 		resp)
 }
 
-func TestGetBill(t *testing.T) {
+func TestGetOpenBill(t *testing.T) {
 	// Arrange
 	newBill := model.BillInfo{
 		Id: model.BillId{
@@ -138,7 +142,7 @@ func TestGetBill(t *testing.T) {
 	authedContext := auth.WithContext(context.Background(), auth.UID(newBill.Id.CustomerId), &rest.AuthData{})
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
-	_, client, tokenDb, billIdGenerator := createBasicMocks(ctrl, newBill)
+	_, client, tokenDb, billIdGenerator, billDatabase := createBasicMocks(ctrl, newBill)
 	initialBillingState := workflow.BillingState{
 		BillInfo:          newBill,
 		BillLineItemCount: 0,
@@ -148,7 +152,7 @@ func TestGetBill(t *testing.T) {
 		},
 	}
 	addGetExpectations(ctrl, client, initialBillingState, initialBillingState)
-	s := rest.NewBillingService(client, rest.TokenDb(tokenDb), billIdGenerator)
+	s := rest.NewBillingService(client, rest.TokenDb(tokenDb), billIdGenerator, billDatabase)
 	_, err := s.OpenNewBill(authedContext, &rest.OpenNewBillRequest{
 		CurrencyCode: "USD",
 		CloseTime:    time.Now().Add(time.Minute),
@@ -184,7 +188,7 @@ func TestCloseBill(t *testing.T) {
 	authedContext := auth.WithContext(context.Background(), auth.UID(newBill.Id.CustomerId), &rest.AuthData{})
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
-	_, client, tokenDb, billIdGenerator := createBasicMocks(ctrl, newBill)
+	_, client, tokenDb, billIdGenerator, billDatabase := createBasicMocks(ctrl, newBill)
 	initialBillingState := workflow.BillingState{
 		BillInfo:          newBill,
 		BillLineItemCount: 0,
@@ -203,7 +207,7 @@ func TestCloseBill(t *testing.T) {
 		},
 	}
 	_ = addCloseExpectations(ctrl, client, finalBillingState)
-	s := rest.NewBillingService(client, rest.TokenDb(tokenDb), billIdGenerator)
+	s := rest.NewBillingService(client, rest.TokenDb(tokenDb), billIdGenerator, billDatabase)
 	_, err := s.OpenNewBill(authedContext, &rest.OpenNewBillRequest{
 		CurrencyCode: "USD",
 		CloseTime:    time.Now().Add(time.Minute),
@@ -237,7 +241,7 @@ func TestAddLineItem(t *testing.T) {
 	authedContext := auth.WithContext(context.Background(), auth.UID(newBill.Id.CustomerId), &rest.AuthData{})
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
-	_, client, tokenDb, billIdGenerator := createBasicMocks(ctrl, newBill)
+	_, client, tokenDb, billIdGenerator, billDatabase := createBasicMocks(ctrl, newBill)
 	initialBillingState := workflow.BillingState{
 		BillInfo:          newBill,
 		BillLineItemCount: 0,
@@ -260,7 +264,7 @@ func TestAddLineItem(t *testing.T) {
 			Ok:    true,
 		},
 	}
-	s := rest.NewBillingService(client, rest.TokenDb(tokenDb), billIdGenerator)
+	s := rest.NewBillingService(client, rest.TokenDb(tokenDb), billIdGenerator, billDatabase)
 	_, err := s.OpenNewBill(authedContext, &rest.OpenNewBillRequest{
 		CurrencyCode: "USD",
 		CloseTime:    time.Now().Add(time.Minute),
@@ -281,6 +285,62 @@ func TestAddLineItem(t *testing.T) {
 		&rest.AddBillLineItemResponse{
 			Id:            lineItem.Id.Id,
 			CurrencyCode:  "USD",
+			LineItemCount: 1,
+			TotalOk:       "y",
+			Total:         100,
+		},
+		resp)
+}
+
+func TestGetClosedBill(t *testing.T) {
+	// Arrange
+	newBill := model.BillInfo{
+		Id: model.BillId{
+			CustomerId: model.CustomerId("aec31fe6-04b5-4dbf-a024-b5f45db6f633"),
+			Id:         "fc03932f-2b53-4d07-ad55-24fc7d85e277",
+		},
+		CurrencyCode: "USD",
+		Status:       model.Closed}
+	authedContext := auth.WithContext(context.Background(), auth.UID(newBill.Id.CustomerId), &rest.AuthData{})
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+	client := mocks.NewMockClient(ctrl)
+	tokenDb := mocks.NewMockTokenDb(ctrl)
+	billIdGenerator := mocks.NewMockBillIdGenerator(ctrl)
+	billDatabase := mocks.NewMockBillDatabase(ctrl)
+	// Bill is in database
+	billDatabase.EXPECT().
+		GetBill(gomock.Eq(newBill.Id)).
+		Return(
+			db.BillInfoAndMetadata{
+				BillInfo:      newBill,
+				LineItemCount: 1,
+				TotalAmount:   model.Amount{Number: 100, CurrencyCode: newBill.CurrencyCode},
+				TotalOk:       true,
+			},
+			nil).
+		Times(1)
+	// Bill has been removed from workflows
+	client.EXPECT().
+		QueryWorkflow(
+			gomock.Any(), gomock.Any(),
+			gomock.Any(),
+			workflow.GetPendingBillStateQuery).
+		Return(nil, &serviceerror.NotFound{}).
+		Times(1)
+	s := rest.NewBillingService(client, rest.TokenDb(tokenDb), billIdGenerator, billDatabase)
+
+	// Act
+	resp, err := s.GetBill(authedContext, newBill.Id.Id, &rest.GetBillRequest{})
+
+	// Assert
+	assert.NoError(t, err)
+	assert.NotNil(t, resp)
+	assert.Equal(t,
+		&rest.GetBillResponse{
+			Id:            newBill.Id.Id,
+			CurrencyCode:  newBill.CurrencyCode,
+			Status:        model.Closed,
 			LineItemCount: 1,
 			TotalOk:       "y",
 			Total:         100,

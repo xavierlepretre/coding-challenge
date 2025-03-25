@@ -32,9 +32,21 @@ func main() {
 
 	// Register your workflow and activities
 	w.RegisterWorkflow(workflow.BillingWorkflow)
-	w.RegisterActivity(activity.CreateBillIfNotExistActivity)
-	w.RegisterActivity(activity.AddBillLineItemIfNotExistActivity)
-	w.RegisterActivity(activity.CloseBillActivity)
+
+	activityHolder, err := activity.NewPostgreSqlActivityHost(activity.PostgreSqlConnection{
+		Host: "localhost",
+		// HACK find better way to get these values
+		Port:   53339,
+		User:   "encore-write",
+		Pass:   "write",
+		DbName: "rest",
+	})
+	if err != nil {
+		log.Fatalf("unable to create activity host: %v", err)
+	}
+	w.RegisterActivity(activityHolder.CreateBillIfNotExistActivity)
+	w.RegisterActivity(activityHolder.AddBillLineItemIfNotExistActivity)
+	w.RegisterActivity(activityHolder.CloseBillActivity)
 
 	// Start the worker
 	err = w.Run(worker.InterruptCh())

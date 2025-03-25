@@ -1,6 +1,7 @@
 package rest
 
 import (
+	"coding-challenge/pkg/db"
 	"coding-challenge/pkg/model"
 	"coding-challenge/pkg/workflow"
 	"context"
@@ -10,6 +11,8 @@ import (
 	"encore.dev"
 	"encore.dev/beta/errs"
 	"encore.dev/rlog"
+	"encore.dev/storage/sqldb"
+	"go.temporal.io/api/serviceerror"
 	"go.temporal.io/sdk/client"
 	"go.temporal.io/sdk/converter"
 )
@@ -20,13 +23,20 @@ var (
 	envName           = encore.Meta().Environment.Name
 	greetingTaskQueue = envName + "-billing"
 	tokenDbType       = envName + "-token-db"
+	BillDbType        = envName + "-bill-db"
 )
+
+// This handles the creation and start of Postgresql
+var sqlDb = sqldb.NewDatabase("rest", sqldb.DatabaseConfig{
+	Migrations: "./migrations",
+})
 
 //encore:service
 type BillingService struct {
 	client          client.Client
 	tokenDb         TokenDb
 	billIdGenerator model.BillIdGenerator
+	billDb          db.BillDatabase
 }
 
 func initBillingService() (*BillingService, error) {
@@ -39,11 +49,12 @@ func initBillingService() (*BillingService, error) {
 		return nil, fmt.Errorf("failed to create token db: %v", err)
 	}
 	billIdGenerator := model.UuidBillIdGenerator{}
-	return NewBillingService(client, tokenDb, &billIdGenerator), nil
+	billDb := db.NewSqlBillDatabase(sqlDb.Stdlib())
+	return NewBillingService(client, tokenDb, &billIdGenerator, *billDb), nil
 }
 
-func NewBillingService(client client.Client, tokenDb TokenDb, billIdGenerator model.BillIdGenerator) *BillingService {
-	return &BillingService{client, tokenDb, billIdGenerator}
+func NewBillingService(client client.Client, tokenDb TokenDb, billIdGenerator model.BillIdGenerator, billDb db.BillDatabase) *BillingService {
+	return &BillingService{client, tokenDb, billIdGenerator, billDb}
 }
 
 func (s *BillingService) Shutdown(force context.Context) {
@@ -129,6 +140,17 @@ type GetBillResponse struct {
 	Total         int64              `json:"total"`
 }
 
+func createGetBillResponse(bill db.BillInfoAndMetadata) *GetBillResponse {
+	return &GetBillResponse{
+		Id:            bill.BillInfo.Id.Id,
+		CurrencyCode:  bill.BillInfo.CurrencyCode,
+		Status:        bill.BillInfo.Status,
+		LineItemCount: bill.LineItemCount,
+		TotalOk:       formatTotalOk(bill.TotalOk),
+		Total:         bill.TotalAmount.Number,
+	}
+}
+
 const TotalOkYes = "y"
 const TotalOkNo = "n"
 
@@ -148,9 +170,19 @@ func (s *BillingService) GetBill(ctx context.Context, id string, getBillRequest 
 	}
 	encodedResult, err := s.client.QueryWorkflow(ctx, CreateWorkflowId(id), "", workflow.GetPendingBillStateQuery)
 	if err != nil {
+		if _, ok := err.(*serviceerror.NotFound); ok {
+			bill, err := s.billDb.GetBill(model.BillId{CustomerId: *customerId, Id: id})
+			if err != nil {
+				rlog.Error("failed to get  fill from workflow or db", "err", err)
+				return nil, errs.WrapCode(err, errs.NotFound, "failed to get bill from workflow or db")
+			}
+			rlog.Info("got bill from db", "bill", bill)
+			return createGetBillResponse(bill), nil
+		}
 		rlog.Error("failed to query workflow", "err", err)
 		return nil, errs.WrapCode(err, errs.NotFound, "failed to query workflow")
 	}
+	rlog.Info("got bill from workflow")
 	var currentState workflow.BillingState
 	err = encodedResult.Get(&currentState)
 	if err != nil {

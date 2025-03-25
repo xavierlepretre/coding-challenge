@@ -4,14 +4,25 @@ import (
 	"coding-challenge/pkg/model"
 )
 
-func CreateBillIfNotExistActivity(bill model.BillInfo) (uint64, error) {
-	return createBillIfNotExistInDatabaseActivity(bill)
+type ActivityHost interface {
+	CreateBillIfNotExistActivity(bill model.BillInfo) (uint64, error)
+	AddBillLineItemIfNotExistActivity(lineItem model.BillLineItem, totalBefore model.TotalAmount) (uint64, error)
+	CloseBillActivity(bill model.BillInfo) (uint64, error)
 }
 
-func AddBillLineItemIfNotExistActivity(bill model.BillInfo, lineItem model.BillLineItem) (uint64, error) {
-	return addBillLineItemIfNotExistToDatabaseActivity(bill, lineItem)
+type DummyActivityHost struct {
 }
 
-func CloseBillActivity(bill model.BillInfo) (uint64, error) {
-	return closeBillInDatabaseActivity(bill)
+var _ ActivityHost = &DummyActivityHost{}
+
+func (d *DummyActivityHost) CreateBillIfNotExistActivity(bill model.BillInfo) (uint64, error) {
+	panic("Not implemented")
+}
+
+func (d *DummyActivityHost) AddBillLineItemIfNotExistActivity(lineItem model.BillLineItem, totalBefore model.TotalAmount) (uint64, error) {
+	panic("Not implemented")
+}
+
+func (d *DummyActivityHost) CloseBillActivity(bill model.BillInfo) (uint64, error) {
+	panic("Not implemented")
 }

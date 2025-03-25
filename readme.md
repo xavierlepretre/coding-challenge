@@ -74,23 +74,29 @@ And do not forget to adjust the created file as per the comment in [`gen_command
 
 ## Run a local live test
 
+Launch Docker.
+
 In terminal 1, launch Temporal CLI:
 
 ```sh
 temporal server start-dev --namespace billing --db-filename temporal.db
 ```
 
-In terminal 2, launch a billing worker:
-
-```sh
-go run main/billing_worker.go --task-queue local-billing
-```
-
-In terminal 3, launch the REST API:
+In terminal 2, launch the REST API:
 
 ```sh
 encore run
 ```
+
+In terminal 3, collect the Docker host port at which Postgresql is available.
+
+    * `docker ps` returns something like `encoredotdev/postgres:15 ... 0.0.0.0:59038->5432/tcp`, where `59038` (or another number) is the host port.
+    * Put this number in `./main/billing_worker.go` at the `Port:   59038,` line.
+    * Launch a billing worker:
+
+    ```sh
+    go run main/billing_worker.go --task-queue local-billing
+    ```
 
 ### Create a new bill
 
@@ -169,3 +175,40 @@ It should return something like:
 ```json
 {"currency_code":"USD","line_item_count":1,"total_ok":"y","total":100}
 ```
+
+### Get the long-ago-closed bill from the database
+
+After having done the above steps to create and close a bill:
+
+* In terminal 1, stop Temporal CLI.
+* In terminal 3, stop the worker.
+* Delete the Temporal database with `rm temporal.db`. That's harsh, but it demonstrates the feature.
+* In terminal 1, launch Temporal CLI again with:
+
+    ```sh
+    temporal server start-dev --namespace billing --db-filename temporal.db
+    ```
+
+* In terminal 2, launch a worker again:
+
+    ```sh
+    go run main/billing_worker.go --task-queue local-billing
+    ```
+
+Back in the [opened browser](http://localhost:9400/sfet4/requests):
+
+* Pick `rest.GetBill`.
+* Enter path as: `/bill/4ba283ee-1d1d-4146-9b67-3dc5b2a21328` or whichever value you had in the previous step.
+* Use `token-alice` as your authentication data.
+* Press <kbd>CALL API</kbd>
+
+It should return something like:
+
+```json
+{"id":"4ba283ee-1d1d-4146-9b67-3dc5b2a21328","currency_code":"USD","status":1,"line_item_count":1,"total_ok":"y","total":100}
+```
+
+Note:
+
+* The `"status":1` part.
+* The request logs should mention `INF got bill from db bill={"BillInfo":...`.

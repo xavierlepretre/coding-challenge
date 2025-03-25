@@ -1,30 +1,50 @@
 package activity
 
 import (
+	"coding-challenge/pkg/db"
 	"coding-challenge/pkg/model"
+	"database/sql"
 	"fmt"
 	"time"
+
+	_ "github.com/lib/pq"
 )
 
 const SaveToDatabaseActivityTimeout = time.Second
 
-func createBillIfNotExistInDatabaseActivity(bill model.BillInfo) (uint64, error) {
-	// Simulate storing data (Replace with actual DB logic)
-	// Example: Write to a SQL database, Redis, or S3
-	fmt.Printf("Saving: %v", bill) // Replace with DB write operation
-	return 1, nil
+type PostgreSqlConnection struct {
+	Host   string
+	Port   int
+	User   string
+	Pass   string
+	DbName string
 }
 
-func addBillLineItemIfNotExistToDatabaseActivity(bill model.BillInfo, lineItem model.BillLineItem) (uint64, error) {
-	// Simulate storing data (Replace with actual DB logic)
-	// Example: Write to a SQL database, Redis, or S3
-	fmt.Printf("Saving: %v", lineItem) // Replace with DB write operation
-	return 1, nil
+type PostgreSqlActivityHost struct {
+	db db.BillDatabase
 }
 
-func closeBillInDatabaseActivity(bill model.BillInfo) (uint64, error) {
-	// Simulate storing data (Replace with actual DB logic)
-	// Example: Write to a SQL database, Redis, or S3
-	fmt.Printf("Closing: %v", bill) // Replace with DB write operation
-	return 1, nil
+var _ ActivityHost = &PostgreSqlActivityHost{}
+
+func NewPostgreSqlActivityHost(conn PostgreSqlConnection) (*PostgreSqlActivityHost, error) {
+	psqlInfo := fmt.Sprintf("host=%s port=%d user=%s "+
+		"password=%s dbname=%s sslmode=disable",
+		conn.Host, conn.Port, conn.User, conn.Pass, conn.DbName)
+	sql, err := sql.Open("postgres", psqlInfo)
+	if err != nil {
+		return nil, err
+	}
+	return &PostgreSqlActivityHost{db: db.NewSqlBillDatabase(sql)}, nil
+}
+
+func (a *PostgreSqlActivityHost) CreateBillIfNotExistActivity(bill model.BillInfo) (uint64, error) {
+	return a.db.CreateBill(bill)
+}
+
+func (a *PostgreSqlActivityHost) AddBillLineItemIfNotExistActivity(lineItem model.BillLineItem, totalBefore model.TotalAmount) (uint64, error) {
+	return a.db.AddLineItem(lineItem, totalBefore)
+}
+
+func (a *PostgreSqlActivityHost) CloseBillActivity(bill model.BillInfo) (uint64, error) {
+	return a.db.CloseBill(bill.Id)
 }
