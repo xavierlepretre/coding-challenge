@@ -102,7 +102,7 @@ func (s *BillingWorkflowUnitTestSuite) Test_Workflow_CloseAtMaturity_WithoutItem
 	s.Equal(workflow.BillingState{
 		BillInfo:          billInfo,
 		BillLineItemCount: 0,
-		Total:             workflow.TotalAmount{Total: model.Amount{Number: 0, CurrencyCode: "USD"}, Ok: true},
+		Total:             model.TotalAmount{Total: model.Amount{Number: 0, CurrencyCode: "USD"}, Ok: true},
 	}, result)
 }
 
@@ -133,7 +133,7 @@ func (s *BillingWorkflowUnitTestSuite) Test_Workflow_CloseEarly_WithoutItems() {
 	s.Equal(workflow.BillingState{
 		BillInfo:          billInfo,
 		BillLineItemCount: 0,
-		Total:             workflow.TotalAmount{Total: model.Amount{Number: 0, CurrencyCode: "USD"}, Ok: true},
+		Total:             model.TotalAmount{Total: model.Amount{Number: 0, CurrencyCode: "USD"}, Ok: true},
 	}, result)
 }
 
@@ -181,7 +181,7 @@ func (s *BillingWorkflowUnitTestSuite) Test_Workflow_CloseEarly_WithFailedItem()
 	s.Equal(workflow.BillingState{
 		BillInfo:          billInfo,
 		BillLineItemCount: 0,
-		Total:             workflow.TotalAmount{Total: model.Amount{Number: 0, CurrencyCode: "USD"}, Ok: true},
+		Total:             model.TotalAmount{Total: model.Amount{Number: 0, CurrencyCode: "USD"}, Ok: true},
 	}, result)
 }
 
@@ -207,7 +207,7 @@ func (s *BillingWorkflowUnitTestSuite) Test_Workflow_CloseEarly_With1Item() {
 					s.Equal(workflow.BillingState{
 						BillInfo:          billInfo,
 						BillLineItemCount: 1,
-						Total:             workflow.TotalAmount{Total: model.Amount{Number: 100, CurrencyCode: "USD"}, Ok: true},
+						Total:             model.TotalAmount{Total: model.Amount{Number: 100, CurrencyCode: "USD"}, Ok: true},
 					}, intermediateState)
 				},
 				OnReject: func(err error) { s.FailNow("Should not reach here") },
@@ -237,7 +237,7 @@ func (s *BillingWorkflowUnitTestSuite) Test_Workflow_CloseEarly_With1Item() {
 	s.Equal(workflow.BillingState{
 		BillInfo:          billInfo,
 		BillLineItemCount: 1,
-		Total:             workflow.TotalAmount{Total: model.Amount{Number: 100, CurrencyCode: "USD"}, Ok: true},
+		Total:             model.TotalAmount{Total: model.Amount{Number: 100, CurrencyCode: "USD"}, Ok: true},
 	}, result)
 }
 
@@ -285,7 +285,7 @@ func (s *BillingWorkflowUnitTestSuite) Test_Workflow_CloseAtMaturity_With2ItemsT
 	s.Equal(workflow.BillingState{
 		BillInfo:          billInfo,
 		BillLineItemCount: 2,
-		Total:             workflow.TotalAmount{Total: model.Amount{Number: 300, CurrencyCode: "USD"}, Ok: true},
+		Total:             model.TotalAmount{Total: model.Amount{Number: 300, CurrencyCode: "USD"}, Ok: true},
 	}, result)
 }
 
@@ -318,7 +318,7 @@ func (s *BillingWorkflowUnitTestSuite) Test_Workflow_CloseAtMaturity_With2ItemsS
 		s.Equal(workflow.BillingState{
 			BillInfo:          billInfo,
 			BillLineItemCount: 1,
-			Total:             workflow.TotalAmount{Total: model.Amount{Number: 100, CurrencyCode: "USD"}, Ok: true},
+			Total:             model.TotalAmount{Total: model.Amount{Number: 100, CurrencyCode: "USD"}, Ok: true},
 		}, intermediateState)
 	}, 3*time.Second)
 	s.env.RegisterDelayedCallback(func() {
@@ -333,7 +333,7 @@ func (s *BillingWorkflowUnitTestSuite) Test_Workflow_CloseAtMaturity_With2ItemsS
 					s.Equal(workflow.BillingState{
 						BillInfo:          billInfo,
 						BillLineItemCount: 2,
-						Total:             workflow.TotalAmount{Total: model.Amount{Number: 300, CurrencyCode: "USD"}, Ok: true},
+						Total:             model.TotalAmount{Total: model.Amount{Number: 300, CurrencyCode: "USD"}, Ok: true},
 					}, intermediateState)
 				},
 				OnReject: func(err error) { s.FailNow("Should not reach here") },
@@ -359,7 +359,7 @@ func (s *BillingWorkflowUnitTestSuite) Test_Workflow_CloseAtMaturity_With2ItemsS
 	s.Equal(workflow.BillingState{
 		BillInfo:          billInfo,
 		BillLineItemCount: 2,
-		Total:             workflow.TotalAmount{Total: model.Amount{Number: 300, CurrencyCode: "USD"}, Ok: true},
+		Total:             model.TotalAmount{Total: model.Amount{Number: 300, CurrencyCode: "USD"}, Ok: true},
 	}, result)
 }
 
@@ -403,7 +403,7 @@ func (s *BillingWorkflowUnitTestSuite) Test_Workflow_AddSameUpdateId_OnlyFirstRe
 					s.Equal(workflow.BillingState{
 						BillInfo:          billInfo,
 						BillLineItemCount: 1,
-						Total:             workflow.TotalAmount{Total: model.Amount{Number: 100, CurrencyCode: "USD"}, Ok: true},
+						Total:             model.TotalAmount{Total: model.Amount{Number: 100, CurrencyCode: "USD"}, Ok: true},
 					}, intermediateState)
 				},
 				OnReject: func(err error) { s.FailNow("Should not reach here") },
@@ -429,7 +429,7 @@ func (s *BillingWorkflowUnitTestSuite) Test_Workflow_AddSameUpdateId_OnlyFirstRe
 	s.Equal(workflow.BillingState{
 		BillInfo:          billInfo,
 		BillLineItemCount: 1,
-		Total:             workflow.TotalAmount{Total: model.Amount{Number: 100, CurrencyCode: "USD"}, Ok: true},
+		Total:             model.TotalAmount{Total: model.Amount{Number: 100, CurrencyCode: "USD"}, Ok: true},
 	}, result)
 }
 
@@ -491,7 +491,7 @@ func (s *BillingWorkflowUnitTestSuite) Test_Workflow_AddSameItemId_OnlyFirstReco
 	s.Equal(workflow.BillingState{
 		BillInfo:          billInfo,
 		BillLineItemCount: 1,
-		Total:             workflow.TotalAmount{Total: model.Amount{Number: 100, CurrencyCode: "USD"}, Ok: true},
+		Total:             model.TotalAmount{Total: model.Amount{Number: 100, CurrencyCode: "USD"}, Ok: true},
 	}, result)
 }
 
@@ -519,7 +519,7 @@ func (s *BillingWorkflowUnitTestSuite) Test_Workflow_CloseAtMaturity_With2Items_
 					s.Equal(workflow.BillingState{
 						BillInfo:          billInfo,
 						BillLineItemCount: 1,
-						Total:             workflow.TotalAmount{Total: model.Amount{Number: math.MaxInt64, CurrencyCode: "USD"}, Ok: true},
+						Total:             model.TotalAmount{Total: model.Amount{Number: math.MaxInt64, CurrencyCode: "USD"}, Ok: true},
 					}, intermediateState)
 				},
 				OnReject: func(err error) { s.FailNow("Should not reach here") },
@@ -547,7 +547,7 @@ func (s *BillingWorkflowUnitTestSuite) Test_Workflow_CloseAtMaturity_With2Items_
 					s.Equal(workflow.BillingState{
 						BillInfo:          billInfo,
 						BillLineItemCount: 2,
-						Total:             workflow.TotalAmount{Total: model.Amount{}, Ok: false},
+						Total:             model.TotalAmount{Total: model.Amount{}, Ok: false},
 					}, intermediateState)
 				},
 				OnReject: func(err error) { s.FailNow("Should not reach here") },
@@ -573,7 +573,7 @@ func (s *BillingWorkflowUnitTestSuite) Test_Workflow_CloseAtMaturity_With2Items_
 	s.Equal(workflow.BillingState{
 		BillInfo:          billInfo,
 		BillLineItemCount: 2,
-		Total:             workflow.TotalAmount{Total: model.Amount{}, Ok: false},
+		Total:             model.TotalAmount{Total: model.Amount{}, Ok: false},
 	}, result)
 }
 
@@ -629,6 +629,6 @@ func (s *BillingWorkflowUnitTestSuite) Test_Workflow_CannotAddItemAfterClose() {
 	s.Equal(workflow.BillingState{
 		BillInfo:          billInfo,
 		BillLineItemCount: 1,
-		Total:             workflow.TotalAmount{Total: model.Amount{Number: 100, CurrencyCode: "USD"}, Ok: true},
+		Total:             model.TotalAmount{Total: model.Amount{Number: 100, CurrencyCode: "USD"}, Ok: true},
 	}, result)
 }

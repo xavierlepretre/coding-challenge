@@ -25,21 +25,10 @@ func (e NegativeDurationError) Error() string {
 	return fmt.Sprintf("duration is negative %q", e.Duration)
 }
 
-type TotalAmount struct {
-	Total model.Amount
-	Ok    bool
-}
-
-func (total *TotalAmount) Add(amount model.Amount) {
-	if total.Ok {
-		total.Total, total.Ok = total.Total.Add(amount)
-	}
-}
-
 type BillingState struct {
 	BillInfo          model.BillInfo
 	BillLineItemCount uint64
-	Total             TotalAmount
+	Total             model.TotalAmount
 }
 
 type billingState struct {
@@ -117,7 +106,7 @@ func BillingWorkflow(ctx workflow.Context, billInfo model.BillInfo, duration tim
 		BillingState: BillingState{
 			BillInfo:          billInfo,
 			BillLineItemCount: 0,
-			Total: TotalAmount{
+			Total: model.TotalAmount{
 				Total: model.Amount{Number: 0, CurrencyCode: billInfo.CurrencyCode},
 				Ok:    true,
 			},

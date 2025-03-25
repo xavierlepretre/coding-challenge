@@ -105,7 +105,7 @@ func TestOpenNewBill(t *testing.T) {
 	initialBillingState := workflow.BillingState{
 		BillInfo:          newBill,
 		BillLineItemCount: 0,
-		Total: workflow.TotalAmount{
+		Total: model.TotalAmount{
 			Total: model.Amount{Number: 0, CurrencyCode: newBill.CurrencyCode},
 			Ok:    true,
 		},
@@ -142,7 +142,7 @@ func TestGetBill(t *testing.T) {
 	initialBillingState := workflow.BillingState{
 		BillInfo:          newBill,
 		BillLineItemCount: 0,
-		Total: workflow.TotalAmount{
+		Total: model.TotalAmount{
 			Total: model.Amount{Number: 0, CurrencyCode: newBill.CurrencyCode},
 			Ok:    true,
 		},
@@ -188,7 +188,7 @@ func TestCloseBill(t *testing.T) {
 	initialBillingState := workflow.BillingState{
 		BillInfo:          newBill,
 		BillLineItemCount: 0,
-		Total: workflow.TotalAmount{
+		Total: model.TotalAmount{
 			Total: model.Amount{Number: 0, CurrencyCode: newBill.CurrencyCode},
 			Ok:    true,
 		},
@@ -197,7 +197,7 @@ func TestCloseBill(t *testing.T) {
 	finalBillingState := workflow.BillingState{
 		BillInfo:          newBill,
 		BillLineItemCount: 0,
-		Total: workflow.TotalAmount{
+		Total: model.TotalAmount{
 			Total: model.Amount{Number: 0, CurrencyCode: newBill.CurrencyCode},
 			Ok:    true,
 		},
@@ -241,7 +241,7 @@ func TestAddLineItem(t *testing.T) {
 	initialBillingState := workflow.BillingState{
 		BillInfo:          newBill,
 		BillLineItemCount: 0,
-		Total: workflow.TotalAmount{
+		Total: model.TotalAmount{
 			Total: model.Amount{Number: 0, CurrencyCode: newBill.CurrencyCode},
 			Ok:    true,
 		},
@@ -255,7 +255,7 @@ func TestAddLineItem(t *testing.T) {
 	updatedBillingState := workflow.BillingState{
 		BillInfo:          newBill,
 		BillLineItemCount: 1,
-		Total: workflow.TotalAmount{
+		Total: model.TotalAmount{
 			Total: model.Amount{Number: 100, CurrencyCode: newBill.CurrencyCode},
 			Ok:    true,
 		},

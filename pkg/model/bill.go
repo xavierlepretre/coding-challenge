@@ -69,3 +69,14 @@ func (b *Bill) AddLineItem(lineItem BillLineItem) error {
 	b.LineItems = append(b.LineItems, lineItem)
 	return nil
 }
+
+type TotalAmount struct {
+	Total Amount
+	Ok    bool
+}
+
+func (total *TotalAmount) Add(amount Amount) {
+	if total.Ok {
+		total.Total, total.Ok = total.Total.Add(amount)
+	}
+}
