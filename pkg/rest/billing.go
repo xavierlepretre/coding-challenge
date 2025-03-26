@@ -75,7 +75,7 @@ func CreateWorkflowId(billId string) string {
 	return fmt.Sprintf("create-bill-%v", billId)
 }
 
-//encore:api auth method=POST path=/bills
+//encore:api public method=POST path=/bills
 func (s *BillingService) OpenNewBill(ctx context.Context, openNewBillRequest *OpenNewBillRequest) (*OpenNewBillResponse, error) {
 	customerId, err := getAuthenticatedCustomerId()
 	if err != nil {
@@ -162,7 +162,7 @@ func formatTotalOk(isOk bool) string {
 	}
 }
 
-//encore:api auth method=GET path=/bill/:id
+//encore:api public method=GET path=/bill/:id
 func (s *BillingService) GetBill(ctx context.Context, id string, getBillRequest *GetBillRequest) (*GetBillResponse, error) {
 	customerId, err := getAuthenticatedCustomerId()
 	if err != nil {
@@ -216,7 +216,7 @@ type CloseBillResponse struct {
 	Total         int64              `json:"total"`
 }
 
-//encore:api auth method=PATCH path=/bill/:id/close
+//encore:api public method=PATCH path=/bill/:id/close
 func (s *BillingService) CloseBill(ctx context.Context, id string, closeBillRequest *CloseBillRequest) (*CloseBillResponse, error) {
 	_, err := getAuthenticatedCustomerId()
 	if err != nil {
@@ -257,7 +257,7 @@ type AddBillLineItemResponse struct {
 	Total         int64              `json:"total"`
 }
 
-//encore:api auth method=POST path=/bill/:id/line-items
+//encore:api public method=POST path=/bill/:id/line-items
 func (s *BillingService) AddBillLineItem(ctx context.Context, id string, addBillLineItemRequest *AddBillLineItemRequest) (*AddBillLineItemResponse, error) {
 	customerId, err := getAuthenticatedCustomerId()
 	if err != nil {

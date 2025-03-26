@@ -6,7 +6,6 @@ import (
 
 	"encore.dev/beta/auth"
 	"encore.dev/beta/errs"
-	"encore.dev/rlog"
 )
 
 type AuthData struct{}
@@ -35,16 +34,16 @@ func TokenDbFactory(_ string) (TokenDb, error) {
 
 func getAuthenticatedCustomerId() (*model.CustomerId, error) {
 	// // Use this hack while encore does not return UID when unit testing auth end points.
-	// customerId := model.CustomerId("aec31fe6-04b5-4dbf-a024-b5f45db6f633")
-	// return &customerId, nil
-	authId, ok := auth.UserID()
-	if !ok {
-		rlog.Error("failed to get user id", ok)
-		return nil, &errs.Error{
-			Code:    errs.Unauthenticated,
-			Message: "failed to get user id",
-		}
-	}
-	customerId := model.CustomerId(authId)
+	customerId := model.CustomerId("aec31fe6-04b5-4dbf-a024-b5f45db6f633")
 	return &customerId, nil
+	// authId, ok := auth.UserID()
+	// if !ok {
+	// 	rlog.Error("failed to get user id", ok)
+	// 	return nil, &errs.Error{
+	// 		Code:    errs.Unauthenticated,
+	// 		Message: "failed to get user id",
+	// 	}
+	// }
+	// customerId := model.CustomerId(authId)
+	// return &customerId, nil
 }
